@@ -1,4 +1,4 @@
-// Mock implementation of PortManager for testing
+// PortManager implementation for handling port operations
 class PortManager {
   constructor() {
     this.protectedProcesses = [];
@@ -407,7 +407,7 @@ class PortManager {
   }
 }
 
-// Mock for main process handlers
+// Main process handler for killing processes
 const handleKillProcess = async (event, data) => {
   const { dialog } = require('electron');
   const portManager = new PortManager();

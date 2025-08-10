@@ -1200,9 +1200,9 @@ Port Type: ${portType}`;
   function showEmptyState(type = 'no-data') {
     const states = {
       'no-data': {
-        icon: '🔌',
+        icon: '✨',
         title: 'No active ports found',
-        message: 'All ports are currently free. Services you start will appear here.',
+        message: 'Your system is clean! All ports are currently free.',
         action: null
       },
       'no-results': {
@@ -1791,6 +1791,15 @@ Port Type: ${portType}`;
   
   // Initialize on page load
   setTimeout(() => {
+    // Show the table section immediately
+    if (tableSection) {
+      tableSection.style.display = 'flex';
+    }
+    
+    // Show skeleton loader while loading initial data
+    showSkeletonLoading();
+    
+    // Auto-load ports on startup
     refreshPorts(false);
     
     // Set version info

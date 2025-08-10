@@ -54,13 +54,13 @@
           <span class="spinner" style="display: none;"></span>
         </button>
       </div>
-      <button id="getAllPortsBtn" class="btn-secondary" aria-label="Show all active ports">
+      <button id="getAllPortsBtn" class="btn-secondary" aria-label="Refresh port list">
         <svg class="btn-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-          <line x1="3" y1="9" x2="21" y2="9"></line>
-          <line x1="8" y1="14" x2="16" y2="14"></line>
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <polyline points="1 20 1 14 7 14"></polyline>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
         </svg>
-        <span class="btn-text">Show all active ports</span>
+        <span class="btn-text">Refresh ports</span>
         <span class="btn-badge" id="portCountBadge" style="display: none;">0</span>
       </button>
     </div>
@@ -106,7 +106,7 @@
     </div>
     
     <!-- Table Section -->
-    <div class="table-section" id="tableSection" style="display: none;">
+    <div class="table-section" id="tableSection">
       
       <!-- Filters and Search -->
       <div class="filter-bar">

@@ -1263,13 +1263,14 @@ body.dark-theme .toast {
   display: flex;
   align-items: center;
   gap: 8px;
-  justify-content: flex-end;
+  justify-content: flex-start;
+  white-space: nowrap;
 }
 
 /* Kill Button Updates */
 .kill-btn {
-  min-height: 36px;
-  padding: 8px 16px;
+  min-height: 32px;
+  padding: 6px 12px;
   font-size: 13px;
   background: var(--btn-danger);
   color: white;
@@ -2002,7 +2003,8 @@ body.dark-theme .status-bar {
 
 #portsTable {
   width: 100%;
-  table-layout: fixed;
+  table-layout: auto;
+  min-width: 100%;
 }
 
 /* Resizable columns */
@@ -2077,7 +2079,7 @@ body.dark-theme .status-bar {
 .table-container {
   flex: 1;
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: auto;
   border: 1px solid var(--border-color);
   border-radius: 8px;
   margin-top: 20px;

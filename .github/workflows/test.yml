@@ -1,0 +1,306 @@
+name: Test Suite
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run memory leak tests nightly
+    - cron: '0 2 * * *'
+
+jobs:
+  unit-tests:
+    name: Unit Tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest]
+        node-version: [18.x, 20.x]
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run unit tests
+      run: npm test
+    
+    - name: Generate coverage report
+      run: npm run test:coverage
+    
+    - name: Upload coverage
+      uses: codecov/codecov-action@v3
+      with:
+        files: ./coverage/lcov.info
+        flags: unittests
+        name: codecov-${{ matrix.os }}-${{ matrix.node-version }}
+    
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-results-${{ matrix.os }}-${{ matrix.node-version }}
+        path: |
+          coverage/
+          test-results/
+
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest]
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: 20.x
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Install Playwright
+      run: npx playwright install
+    
+    - name: Build Electron app
+      run: npm run package
+    
+    - name: Run E2E tests
+      run: npm run test:e2e
+      env:
+        CI: true
+    
+    - name: Upload E2E test results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: e2e-results-${{ matrix.os }}
+        path: |
+          test-results/
+          playwright-report/
+
+  platform-specific-tests:
+    name: Platform Specific Tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: macos-12
+            name: macOS Monterey
+          - os: macos-13
+            name: macOS Ventura
+          - os: macos-14
+            name: macOS Sonoma (Apple Silicon)
+          - os: windows-2019
+            name: Windows Server 2019
+          - os: windows-2022
+            name: Windows Server 2022
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: 20.x
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Test platform commands (Mac)
+      if: runner.os == 'macOS'
+      run: |
+        echo "Testing lsof command..."
+        lsof -i -P -n | head -10
+        echo "Testing kill command availability..."
+        which kill
+    
+    - name: Test platform commands (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        echo "Testing netstat command..."
+        netstat -ano | Select-Object -First 10
+        echo "Testing taskkill command availability..."
+        where taskkill
+    
+    - name: Run platform tests
+      run: npm test -- --testPathPattern=platform
+
+  memory-leak-test:
+    name: Memory Leak Detection
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest]
+    # Only run on schedule or manual trigger
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: 20.x
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Build app
+      run: npm run package
+    
+    - name: Run memory leak test (1 hour)
+      run: |
+        node test/memory/memory-leak-detector.js --duration 3600000
+      timeout-minutes: 70
+    
+    - name: Upload memory report
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: memory-report-${{ matrix.os }}
+        path: test/memory/memory-report.json
+    
+    - name: Check for memory leaks
+      run: |
+        node -e "
+        const report = require('./test/memory/memory-report.json');
+        if (report.leakDetected) {
+          console.error('Memory leak detected!');
+          process.exit(1);
+        }
+        console.log('No memory leaks detected');
+        "
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Run npm audit
+      run: npm audit --audit-level=moderate
+    
+    - name: Run Snyk security scan
+      uses: snyk/actions/node@master
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      with:
+        args: --severity-threshold=medium
+
+  build-test:
+    name: Build Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest]
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: 20.x
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Build for production
+      run: npm run make
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-${{ matrix.os }}
+        path: out/
+
+  auto-update-test:
+    name: Auto-Update Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest]
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: 20.x
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Configure auto-updater
+      run: |
+        echo "Setting up auto-updater test configuration..."
+        # Add test update server configuration
+    
+    - name: Build with auto-updater
+      run: npm run make
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Test update check
+      run: |
+        # Test that update check doesn't crash
+        node -e "
+        const { autoUpdater } = require('electron-updater');
+        autoUpdater.checkForUpdatesAndNotify()
+          .then(() => console.log('Update check passed'))
+          .catch(err => {
+            console.error('Update check failed:', err);
+            process.exit(1);
+          });
+        "
+
+  notification:
+    name: Test Results Notification
+    runs-on: ubuntu-latest
+    needs: [unit-tests, e2e-tests, platform-specific-tests, security-scan, build-test]
+    if: always()
+    
+    steps:
+    - name: Check test results
+      run: |
+        echo "Unit Tests: ${{ needs.unit-tests.result }}"
+        echo "E2E Tests: ${{ needs.e2e-tests.result }}"
+        echo "Platform Tests: ${{ needs.platform-specific-tests.result }}"
+        echo "Security Scan: ${{ needs.security-scan.result }}"
+        echo "Build Test: ${{ needs.build-test.result }}"
+    
+    - name: Send Slack notification
+      if: github.ref == 'refs/heads/main'
+      uses: slackapi/slack-github-action@v1
+      with:
+        payload: |
+          {
+            "text": "Test Suite Results for ${{ github.repository }}",
+            "blocks": [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "*Test Results:*\n• Unit Tests: ${{ needs.unit-tests.result }}\n• E2E Tests: ${{ needs.e2e-tests.result }}\n• Platform Tests: ${{ needs.platform-specific-tests.result }}\n• Security: ${{ needs.security-scan.result }}\n• Build: ${{ needs.build-test.result }}"
+                }
+              }
+            ]
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

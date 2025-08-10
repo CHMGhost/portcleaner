@@ -1372,14 +1372,14 @@ Port Type: ${portType}`;
             <span class="port-number">${highlightedPort}</span>
             ${isCritical ? `<span class="critical-badge" title="${CRITICAL_PORTS[port.port]} Service">⚠️</span>` : ''}
           </td>
+          <td>${highlightedPid}</td>
+          <td class="${cpuClass}">${port.cpu || '0'}%</td>
+          <td class="memory-value">${port.memory || '0 KB'}</td>
+          <td>${highlightedUser}</td>
           <td>
             <span class="process-name">${highlightedProcess}</span>
             ${isProtected ? `<span class="protected-badge" title="Protected Process">🔒</span>` : ''}
           </td>
-          <td>${highlightedPid}</td>
-          <td>${highlightedUser}</td>
-          <td class="${cpuClass}">${port.cpu || '0'}%</td>
-          <td class="memory-value">${port.memory || '0 KB'}</td>
           <td>
             <div class="action-cell">
               ${isProtected 

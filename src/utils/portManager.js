@@ -52,18 +52,117 @@ class PortManager {
     
     try {
       if (process.platform === 'darwin') {
-        const { stdout } = await execAsync('lsof -i -P -n | grep LISTEN');
-        return this.parseMacPorts(stdout);
+        // First check if lsof is available
+        try {
+          await execAsync('which lsof');
+        } catch (cmdError) {
+          return { 
+            ports: [], 
+            error: 'Command not found',
+            errorType: 'COMMAND_NOT_FOUND',
+            userMessage: 'lsof command not found. Please install it to use PortCleaner.'
+          };
+        }
+        
+        try {
+          // First try to run lsof without sudo
+          const { stdout: lsofTest } = await execAsync('lsof -i -P -n 2>/dev/null || true', { 
+            maxBuffer: 1024 * 1024 * 10,
+            shell: true 
+          });
+          
+          // Filter for LISTEN ports
+          const lines = lsofTest.split('\n').filter(line => line.includes('LISTEN'));
+          
+          // If we got some results, return them
+          if (lines.length > 0) {
+            return this.parseMacPorts(lines.join('\n'));
+          }
+          
+          // If no results, it might be a permission issue
+          // Try to at least get user-accessible ports
+          try {
+            const { stdout: userPorts } = await execAsync('lsof -i -P -n -u $USER 2>/dev/null | grep LISTEN || true', { 
+              maxBuffer: 1024 * 1024 * 10,
+              shell: true 
+            });
+            
+            if (userPorts && userPorts.trim()) {
+              const ports = this.parseMacPorts(userPorts);
+              // Add a flag to indicate limited results
+              return {
+                ports: ports,
+                limited: true,
+                userMessage: 'Showing user-accessible ports only. Run with sudo for all ports.'
+              };
+            }
+          } catch (e) {
+            // Ignore this error and continue
+          }
+          
+          // No ports found at all
+          return [];
+          
+        } catch (lsofError) {
+          console.warn('lsof error:', lsofError.message);
+          
+          // Try basic netstat as fallback
+          try {
+            const { stdout: netstatOut } = await execAsync('netstat -an 2>/dev/null | grep LISTEN || true', {
+              maxBuffer: 1024 * 1024 * 10,
+              shell: true
+            });
+            
+            if (netstatOut && netstatOut.trim()) {
+              // Parse netstat output (simplified)
+              const ports = [];
+              const lines = netstatOut.split('\n');
+              lines.forEach(line => {
+                const match = line.match(/[\.\:]\s*(\d+)\s+.*LISTEN/);
+                if (match) {
+                  ports.push({
+                    port: parseInt(match[1]),
+                    pid: 0,
+                    process: 'Unknown',
+                    user: 'Unknown',
+                    protected: false,
+                    killable: false
+                  });
+                }
+              });
+              
+              if (ports.length > 0) {
+                return {
+                  ports: ports,
+                  limited: true,
+                  userMessage: 'Limited port information available. Run with administrator privileges for full details.'
+                };
+              }
+            }
+          } catch (netstatError) {
+            console.warn('netstat fallback also failed:', netstatError.message);
+          }
+          
+          // If everything fails, return permission error
+          return { 
+            ports: [], 
+            error: 'Permission denied',
+            errorType: 'PERMISSION_DENIED',
+            userMessage: 'Unable to scan ports. Administrator privileges may be required.'
+          };
+        }
       } else if (process.platform === 'win32') {
-        const { stdout } = await execAsync('netstat -ano');
+        const { stdout } = await execAsync('netstat -ano', { maxBuffer: 1024 * 1024 * 10 });
         return this.parseWindowsPorts(stdout);
       }
       
       return { ports: [], error: 'Unsupported platform' };
     } catch (error) {
+      console.error('Port scan error:', error);
       return { 
         ports: [], 
         error: error.message,
+        errorType: 'UNKNOWN_ERROR',
         userMessage: 'Unable to retrieve port information. Please check your system permissions.'
       };
     }
@@ -130,8 +229,10 @@ class PortManager {
   }
   
   async killProcess(pid, processName) {
+    console.log('portManager.killProcess called with:', { pid, processName });
     // Validate PID
     if (!pid || pid <= 0 || isNaN(pid)) {
+      console.log('Invalid PID:', pid);
       return {
         success: false,
         error: 'Invalid PID provided'
@@ -157,13 +258,16 @@ class PortManager {
         ? `kill -9 ${pid}`
         : `taskkill /F /PID ${pid}`;
       
-      await execAsync(command);
+      console.log('Executing command:', command);
+      const result = await execAsync(command);
+      console.log('Command result:', result);
       
       return {
         success: true,
         message: `Process ${pid} has been terminated`
       };
     } catch (error) {
+      console.error('Kill command failed:', error);
       const errorLower = error.message.toLowerCase();
       
       if (errorLower.includes('not permitted') || errorLower.includes('access')) {
@@ -351,7 +455,10 @@ class PortManager {
     
     try {
       if (process.platform === 'darwin') {
-        const { stdout } = await execAsync(`lsof -i :${port} -P -n | grep LISTEN`);
+        // Use '|| true' to prevent error when grep finds nothing
+        const { stdout } = await execAsync(`lsof -i :${port} -P -n | grep LISTEN || true`, {
+          shell: true
+        });
         const lines = stdout.split('\n').filter(line => line.trim());
         
         if (lines.length > 0) {
@@ -365,6 +472,7 @@ class PortManager {
             };
           }
         }
+        return null; // Port not in use
       } else if (process.platform === 'win32') {
         const { stdout } = await execAsync(`netstat -ano | findstr :${port}`);
         const lines = stdout.split('\n').filter(line => line.includes('LISTENING'));

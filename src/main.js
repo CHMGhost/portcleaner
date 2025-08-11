@@ -195,14 +195,96 @@ ipcMain.handle('get-port-info', async (event, port) => {
   }
 });
 
-ipcMain.handle('kill-process', async (event, pid, processName, port, forceKill = false) => {
-  try {
-    // Check if it's a protected system process
-    const isProtected = PROTECTED_PROCESSES.some(
-      proc => processName?.toLowerCase().includes(proc.toLowerCase())
-    );
+// Server-side protection validation
+function validateProcessProtection(pid, processName, port) {
+  const validation = {
+    isProtected: false,
+    protectionLevel: 'none', // none, warning, critical
+    reasons: [],
+    canOverride: true
+  };
+  
+  // Check critical system processes (cannot be killed)
+  const CRITICAL_SYSTEM_PROCESSES = [
+    'kernel_task', 'launchd', 'systemd', 'init', 
+    'System', 'Registry', 'smss.exe', 'csrss.exe'
+  ];
+  
+  if (CRITICAL_SYSTEM_PROCESSES.some(proc => 
+    processName?.toLowerCase().includes(proc.toLowerCase()))) {
+    validation.isProtected = true;
+    validation.protectionLevel = 'critical';
+    validation.canOverride = false;
+    validation.reasons.push('Core operating system process');
+    validation.reasons.push('Killing this will crash your system');
+    return validation;
+  }
+  
+  // Check protected services (can be overridden with warnings)
+  if (PROTECTED_PROCESSES.some(proc => 
+    processName?.toLowerCase().includes(proc.toLowerCase()))) {
+    validation.isProtected = true;
+    validation.protectionLevel = 'warning';
+    validation.canOverride = true;
     
-    if (isProtected && !forceKill) {
+    // Add specific reasons
+    if (['postgres', 'mysql', 'mongod', 'redis'].some(p => 
+      processName?.toLowerCase().includes(p.toLowerCase()))) {
+      validation.reasons.push('Database service');
+      validation.reasons.push('May cause data corruption');
+    } else if (['docker', 'nginx', 'apache'].some(p => 
+      processName?.toLowerCase().includes(p.toLowerCase()))) {
+      validation.reasons.push('Critical service');
+      validation.reasons.push('Other services depend on this');
+    }
+  }
+  
+  // Check system ports (ports < 1024)
+  if (port && port < 1024) {
+    validation.isProtected = true;
+    validation.protectionLevel = validation.protectionLevel === 'critical' ? 'critical' : 'warning';
+    validation.reasons.push(`System port (${port})`);
+    validation.reasons.push('Requires elevated privileges');
+  }
+  
+  // Check critical service ports
+  if (CRITICAL_PORTS[port]) {
+    validation.isProtected = true;
+    validation.protectionLevel = validation.protectionLevel === 'critical' ? 'critical' : 'warning';
+    validation.reasons.push(`${CRITICAL_PORTS[port]} service port`);
+  }
+  
+  return validation;
+}
+
+ipcMain.handle('kill-process', async (event, pid, processName, port, forceStop = false) => {
+  console.log('Kill process called with:', { pid, processName, port, forceStop });
+  try {
+    // Server-side protection validation
+    const protection = validateProcessProtection(pid, processName, port);
+    
+    // Block critical processes that cannot be killed
+    if (protection.protectionLevel === 'critical' && !protection.canOverride) {
+      // Show error dialog
+      await dialog.showMessageBox(mainWindow, {
+        type: 'error',
+        buttons: ['OK'],
+        title: 'Cannot Stop Process',
+        message: `${processName} cannot be stopped`,
+        detail: `This is a critical system process that cannot be stopped:\n\n${protection.reasons.join('\n')}`
+      });
+      
+      return { 
+        success: false, 
+        error: 'Process is protected',
+        protection: protection
+      };
+    }
+    
+    // Check if it's a protected system process
+    const isProtected = protection.isProtected;
+    
+    if (isProtected && !forceStop) {
       let detailMessage = 'This process is protected because:\n\n';
       
       // Provide specific reasons based on process type
@@ -214,7 +296,7 @@ ipcMain.handle('kill-process', async (event, pid, processName, port, forceKill =
         detailMessage += '• It is a critical development service\n• Other containers or services may depend on it\n• It should be stopped gracefully through proper commands';
       }
       
-      detailMessage += '\n\n⚠️ However, you can still force kill this process if you understand the risks.';
+      detailMessage += '\n\n⚠️ However, you can still force stop this process if you understand the risks.';
       
       // Ensure window is visible for dialog
       if (mainWindow && !mainWindow.isVisible()) {
@@ -223,7 +305,7 @@ ipcMain.handle('kill-process', async (event, pid, processName, port, forceKill =
       
       const result = await dialog.showMessageBox(mainWindow, {
         type: 'warning',
-        buttons: ['Cancel', 'Force Kill Anyway'],
+        buttons: ['Cancel', 'Force Stop Anyway'],
         defaultId: 0,
         cancelId: 0,
         title: 'Protected Process Warning',
@@ -233,25 +315,25 @@ ipcMain.handle('kill-process', async (event, pid, processName, port, forceKill =
         checkboxChecked: false
       });
       
-      // If user chooses to force kill and checked the understanding box
+      // If user chooses to force stop and checked the understanding box
       if (result.response === 1 && result.checkboxChecked) {
-        // Call this function again with forceKill = true
-        return await ipcMain._events['kill-process'][0](event, pid, processName, port, true);
+        // Set forceStop to true and continue with the stop logic
+        forceStop = true;
+      } else {
+        return { success: false, error: 'Protected system process', userCancelled: true };
       }
-      
-      return { success: false, error: 'Protected system process', userCancelled: true };
     }
     
-    // If forceKill is true and process is protected, show final warning
-    if (isProtected && forceKill) {
+    // If forceStop is true and process is protected, show final warning
+    if (isProtected && forceStop) {
       const finalWarning = await dialog.showMessageBox(mainWindow, {
         type: 'error',
-        buttons: ['Cancel', 'Yes, Force Kill'],
+        buttons: ['Cancel', 'Yes, Force Stop'],
         defaultId: 0,
         cancelId: 0,
         title: '⚠️ FINAL WARNING',
         message: `Are you ABSOLUTELY sure?`,
-        detail: `You are about to forcefully terminate ${processName} (PID: ${pid}).\n\n` +
+        detail: `You are about to forcefully stop ${processName} (PID: ${pid}).\n\n` +
                 `🚨 This may cause:\n` +
                 `• System instability or crashes\n` +
                 `• Data loss or corruption\n` +
@@ -262,17 +344,17 @@ ipcMain.handle('kill-process', async (event, pid, processName, port, forceKill =
       });
       
       if (finalWarning.response !== 1) {
-        return { success: false, error: 'User cancelled force kill', userCancelled: true };
+        return { success: false, error: 'User cancelled force stop', userCancelled: true };
       }
       // Proceed to kill the protected process
     }
     
     // Build warning message
-    let warningDetail = 'This will forcefully terminate the process.';
+    let warningDetail = 'This will stop the process.';
     
     // Add extra warning for critical ports
     if (CRITICAL_PORTS[port]) {
-      warningDetail += `\n\n⚠️ WARNING: Port ${port} is commonly used for ${CRITICAL_PORTS[port]}. Killing this process may affect important services.`;
+      warningDetail += `\n\n⚠️ WARNING: Port ${port} is commonly used for ${CRITICAL_PORTS[port]}. Stopping this process may affect important services.`;
     }
     
     // Show confirmation dialog (ensure window is visible for dialog)
@@ -282,17 +364,19 @@ ipcMain.handle('kill-process', async (event, pid, processName, port, forceKill =
     
     const result = await dialog.showMessageBox(mainWindow, {
       type: 'warning',
-      buttons: ['Cancel', 'Kill Process'],
+      buttons: ['Cancel', 'Stop Process'],
       defaultId: 0,
       cancelId: 0,
-      title: 'Confirm Process Termination',
-      message: `Kill ${processName || 'process'} (PID: ${pid})?`,
+      title: 'Confirm Process Stop',
+      message: `Stop ${processName || 'process'} (PID: ${pid})?`,
       detail: warningDetail
     });
     
     if (result.response === 1) {
-      await portManager.killProcess(pid);
-      return { success: true };
+      console.log('User confirmed kill, calling portManager.killProcess with:', pid, processName);
+      const killResult = await portManager.killProcess(pid, processName);
+      console.log('Kill result:', killResult);
+      return killResult;
     } else {
       return { success: false, error: 'User cancelled' };
     }
@@ -304,14 +388,45 @@ ipcMain.handle('kill-process', async (event, pid, processName, port, forceKill =
 
 ipcMain.handle('get-all-ports', async (event) => {
   try {
-    const ports = await portManager.getAllPorts();
+    const result = await portManager.getAllPorts();
+    
+    // Check if it's an error response
+    if (result.error) {
+      console.error('Port scan error:', result.error);
+      return { 
+        success: false, 
+        error: result.error,
+        errorType: result.errorType || 'UNKNOWN_ERROR',
+        userMessage: result.userMessage || 'Unable to scan ports',
+        data: [] 
+      };
+    }
+    
+    // Handle different result formats
+    let ports = [];
+    let isLimited = false;
+    let limitedMessage = null;
+    
+    if (Array.isArray(result)) {
+      // Simple array of ports
+      ports = result;
+    } else if (result.ports) {
+      // Object with ports array
+      ports = result.ports;
+      isLimited = result.limited || false;
+      limitedMessage = result.userMessage;
+    } else {
+      // Empty result
+      ports = [];
+    }
+    
     // Enrich with CPU/Memory stats
     const enrichedPorts = await Promise.all(ports.map(async (port) => {
       const stats = await portManager.getProcessStats(port.pid);
       return {
         ...port,
-        cpu: stats.cpu,
-        memory: stats.memory
+        cpu: stats.cpu || '0',
+        memory: stats.memory || '0 KB'
       };
     }));
     
@@ -320,9 +435,124 @@ ipcMain.handle('get-all-ports', async (event) => {
     tray?.setToolTip(`PortCleaner - ${activePortCount} active ports`);
     updateTrayMenu();
     
-    return { success: true, data: enrichedPorts };
+    return { 
+      success: true, 
+      data: enrichedPorts,
+      limited: isLimited,
+      limitedMessage: limitedMessage
+    };
   } catch (error) {
     console.error('Error getting all ports:', error);
-    return { success: false, error: error.message, data: [] };
+    return { 
+      success: false, 
+      error: error.message,
+      errorType: 'UNKNOWN_ERROR',
+      userMessage: 'An unexpected error occurred',
+      data: [] 
+    };
+  }
+});
+
+// System requirement checks
+ipcMain.handle('check-system-requirements', async () => {
+  const { exec } = require('child_process');
+  const { promisify } = require('util');
+  const execAsync = promisify(exec);
+  
+  const result = {
+    hasPermissions: true,
+    hasCommands: true, 
+    isConnected: true
+  };
+  
+  // Check for required commands
+  try {
+    if (process.platform === 'win32') {
+      await execAsync('where netstat');
+    } else {
+      await execAsync('which lsof');
+    }
+  } catch (error) {
+    result.hasCommands = false;
+  }
+  
+  // Check for admin/sudo permissions (simplified check)
+  try {
+    if (process.platform === 'win32') {
+      // Windows permission check
+      const isAdmin = process.env.USERNAME === 'Administrator';
+      result.hasPermissions = isAdmin || true; // Allow non-admin with warning
+    } else {
+      // Unix permission check - try to read a protected port
+      await execAsync('lsof -i:1 2>/dev/null || true');
+    }
+  } catch (error) {
+    // If command fails, we might need permissions
+    result.hasPermissions = true; // Allow with limited functionality
+  }
+  
+  // Check network connectivity
+  try {
+    const { net } = require('electron');
+    result.isConnected = net.online;
+  } catch (error) {
+    result.isConnected = true; // Assume connected if check fails
+  }
+  
+  return result;
+});
+
+ipcMain.handle('request-admin-permissions', async () => {
+  try {
+    if (process.platform === 'darwin' || process.platform === 'linux') {
+      // On macOS/Linux, we'd need to restart with sudo
+      const result = await dialog.showMessageBox(mainWindow, {
+        type: 'info',
+        buttons: ['OK'],
+        title: 'Administrator Privileges Required',
+        message: 'PortCleaner needs to be run with administrator privileges',
+        detail: 'Please restart the application with sudo:\nsudo npm start\n\nOr use the packaged app with admin rights.'
+      });
+      return { success: false };
+    } else if (process.platform === 'win32') {
+      // On Windows, request elevation
+      const result = await dialog.showMessageBox(mainWindow, {
+        type: 'info',
+        buttons: ['OK'],
+        title: 'Administrator Privileges Required', 
+        message: 'Please run PortCleaner as Administrator',
+        detail: 'Right-click the application and select "Run as administrator"'
+      });
+      return { success: false };
+    }
+  } catch (error) {
+    console.error('Permission request error:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('check-connection', async () => {
+  try {
+    const { net } = require('electron');
+    return { connected: net.online };
+  } catch (error) {
+    return { connected: true }; // Assume connected if check fails
+  }
+});
+
+ipcMain.handle('check-system-commands', async () => {
+  const { exec } = require('child_process');
+  const { promisify } = require('util');
+  const execAsync = promisify(exec);
+  
+  try {
+    if (process.platform === 'win32') {
+      await execAsync('where netstat');
+    } else {
+      await execAsync('which lsof');
+    }
+    return { available: true };
+  } catch (error) {
+    return { available: false };
   }
 });

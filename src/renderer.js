@@ -744,7 +744,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const allPortsList = document.getElementById('allPortsList');
   const portTableContainer = document.getElementById('portTableContainer') || document.getElementById('tableSection');
   const themeToggle = document.getElementById('themeToggle');
-  const themeIcon = themeToggle?.querySelector('.theme-icon');
   const autoRefreshContainer = document.getElementById('autoRefreshContainer');
   const autoRefreshToggle = document.getElementById('autoRefreshToggle');
   const refreshIntervalSelect = document.getElementById('refreshInterval');
@@ -797,12 +796,18 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Load saved preferences
   const savedTheme = localStorage.getItem(THEME_KEY);
+  const lightIcon = themeToggle?.querySelector('.theme-icon-light');
+  const darkIcon = themeToggle?.querySelector('.theme-icon-dark');
+  
   if (savedTheme === 'dark') {
     document.body.classList.add('dark-theme');
-    if (themeIcon) themeIcon.textContent = '☀️';
+    // Show moon icon for dark theme
+    lightIcon?.classList.add('hidden');
+    darkIcon?.classList.remove('hidden');
   } else {
-    // Light theme is default
-    if (themeIcon) themeIcon.textContent = '🌙';
+    // Light theme is default - show sun icon
+    lightIcon?.classList.remove('hidden');
+    darkIcon?.classList.add('hidden');
   }
   
   // Load saved refresh interval

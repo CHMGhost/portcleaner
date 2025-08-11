@@ -40,6 +40,7 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 800,
     height: 600,
+    show: false, // Start hidden
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -48,7 +49,9 @@ function createWindow() {
   });
 
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
-  mainWindow.webContents.openDevTools(); // For debugging
+  // mainWindow.webContents.openDevTools(); // Commented out for production
+  
+  // Window stays hidden until user explicitly opens it from tray
   
   // Handle window minimize to tray
   mainWindow.on('minimize', (event) => {
@@ -61,51 +64,111 @@ function createWindow() {
     if (!app.isQuitting) {
       event.preventDefault();
       mainWindow.hide();
+      // Hide dock icon when window is closed (macOS)
+      if (process.platform === 'darwin') {
+        app.dock.hide();
+      }
+      updateTrayMenu(); // Update menu label
     }
   });
 }
 
 // Create system tray
 function createTray() {
-  const icon = createTrayIcon(process.platform === 'darwin');
-  tray = new Tray(icon);
-  
-  updateTrayMenu();
-  
-  // Set tooltip
-  tray.setToolTip(`PortCleaner - ${activePortCount} active ports`);
-  
-  // Handle tray click
-  tray.on('click', () => {
-    if (mainWindow) {
-      if (mainWindow.isVisible()) {
-        mainWindow.hide();
-      } else {
-        mainWindow.show();
-      }
+  try {
+    console.log('Creating tray icon...');
+    const icon = createTrayIcon(process.platform === 'darwin');
+    
+    if (!icon || icon.isEmpty()) {
+      console.error('Failed to create tray icon - icon is empty');
+      return;
     }
-  });
+    
+    tray = new Tray(icon);
+    
+    if (!tray) {
+      console.error('Failed to create tray object');
+      return;
+    }
+    
+    console.log('Tray created successfully');
+    
+    updateTrayMenu();
+    
+    // Set tooltip
+    tray.setToolTip(`PortCleaner - Click to open`);
+  
+    // Handle tray click
+    tray.on('click', () => {
+      if (mainWindow) {
+        if (mainWindow.isVisible()) {
+          mainWindow.hide();
+          // Hide dock icon when window is hidden (macOS)
+          if (process.platform === 'darwin') {
+            app.dock.hide();
+          }
+        } else {
+          mainWindow.show();
+          mainWindow.focus();
+          // Show dock icon when window is visible (macOS)
+          if (process.platform === 'darwin') {
+            app.dock.show();
+          }
+        }
+        updateTrayMenu(); // Update menu label
+      }
+    });
+  } catch (error) {
+    console.error('Error creating tray:', error);
+  }
 }
 
 // Update tray menu
 function updateTrayMenu() {
   const contextMenu = Menu.buildFromTemplate([
     { 
-      label: mainWindow?.isVisible() ? 'Hide App' : 'Show App', 
+      label: 'PortCleaner',
+      enabled: false
+    },
+    { type: 'separator' },
+    { 
+      label: mainWindow?.isVisible() ? 'Hide Window' : 'Show Window', 
+      accelerator: 'CommandOrControl+Shift+P',
       click: () => {
-        if (mainWindow) {
-          if (mainWindow.isVisible()) {
-            mainWindow.hide();
-          } else {
-            mainWindow.show();
+        if (!mainWindow) {
+          createWindow();
+        } else if (mainWindow.isVisible()) {
+          mainWindow.hide();
+          // Hide dock icon when window is hidden (macOS)
+          if (process.platform === 'darwin') {
+            app.dock.hide();
+          }
+        } else {
+          mainWindow.show();
+          mainWindow.focus();
+          // Show dock icon when window is visible for better UX (macOS)
+          if (process.platform === 'darwin') {
+            app.dock.show();
           }
         }
+        updateTrayMenu(); // Update menu label
       }
     },
     { 
-      label: 'Quick Scan', 
+      label: 'Quick Scan Ports', 
+      accelerator: 'CommandOrControl+Shift+S',
       click: async () => {
         await quickScanPorts();
+        // Show window with results
+        if (mainWindow) {
+          mainWindow.show();
+          mainWindow.focus();
+          // Show dock icon when showing results (macOS)
+          if (process.platform === 'darwin') {
+            app.dock.show();
+          }
+        }
+        updateTrayMenu(); // Update menu label
       }
     },
     { type: 'separator' },
@@ -114,8 +177,21 @@ function updateTrayMenu() {
       enabled: false
     },
     { type: 'separator' },
+    {
+      label: 'Preferences...',
+      accelerator: 'CommandOrControl+,',
+      click: () => {
+        // Show preferences (could open a preferences window in the future)
+        if (mainWindow) {
+          mainWindow.show();
+          mainWindow.focus();
+        }
+      }
+    },
+    { type: 'separator' },
     { 
-      label: 'Quit', 
+      label: 'Quit PortCleaner', 
+      accelerator: 'CommandOrControl+Q',
       click: () => {
         app.isQuitting = true;
         app.quit();
@@ -165,17 +241,39 @@ async function quickScanPorts() {
 }
 
 app.whenReady().then(() => {
-  createWindow();
-  createTray();
+  console.log('App is ready, creating tray and window...');
   
-  // Do an initial quick scan
-  quickScanPorts();
+  // Create tray first so app has menu bar presence immediately
+  createTray();
+  createWindow();
+  
+  // Show window on first run to help users find the app
+  setTimeout(() => {
+    if (mainWindow && !mainWindow.isVisible()) {
+      console.log('Showing main window for first run...');
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  }, 500);
+  
+  // Hide dock after window is shown (for menu bar app behavior)
+  setTimeout(() => {
+    if (process.platform === 'darwin') {
+      // Keep dock visible for now to help with debugging
+      // app.dock.hide();
+    }
+  }, 1000);
+  
+  // Do an initial quick scan after a short delay
+  setTimeout(() => {
+    quickScanPorts();
+  }, 2000);
 });
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
+// Don't quit when all windows are closed (keep running in tray)
+app.on('window-all-closed', (event) => {
+  // Prevent the app from quitting
+  event.preventDefault();
 });
 
 app.on('activate', () => {

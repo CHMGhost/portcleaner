@@ -4104,17 +4104,26 @@ body.dark-theme .status-bar {
   align-items: center;
   padding-top: 20px;
   flex-wrap: wrap;
+  justify-content: space-between; /* Push items apart */
 }
 
 .search-container {
   flex: 0 1 300px; /* Don't grow, can shrink, base width 300px */
   position: relative;
-  min-width: 200px; /* Minimum width before wrapping */
+  min-width: 180px; /* Minimum width before wrapping */
+  max-width: 350px; /* Maximum width to prevent too wide */
+}
+
+.filter-controls {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: nowrap;
 }
 
 .search-input {
   width: 100%;
-  padding: 8px 12px 8px 36px;
+  padding: 8px 12px;
   font-size: 14px;
   border: 1px solid var(--border-color);
   border-radius: 6px;
@@ -4129,6 +4138,7 @@ body.dark-theme .status-bar {
   box-shadow: 0 0 0 3px rgba(91, 103, 202, 0.1);
 }
 
+/* Search icon removed per user request
 .search-icon {
   position: absolute;
   left: 12px;
@@ -4136,7 +4146,7 @@ body.dark-theme .status-bar {
   transform: translateY(-50%);
   color: var(--text-muted);
   pointer-events: none;
-}
+} */
 
 .clear-search-btn {
   position: absolute;
@@ -4159,9 +4169,12 @@ body.dark-theme .status-bar {
 }
 
 .filter-chips {
-  display: flex;
+  display: inline-flex;
   gap: 8px;
   flex-shrink: 0; /* Prevent chips from shrinking */
+  flex-wrap: nowrap; /* Keep chips in a single row */
+  align-items: center;
+  min-width: 0; /* Allow chips to shrink if needed */
 }
 
 /* Result count indicator */
@@ -4172,11 +4185,30 @@ body.dark-theme .status-bar {
   background: var(--bg-tertiary);
   border-radius: 6px;
   border: 1px solid var(--border-color);
-  margin-left: auto;
   white-space: nowrap;
   display: flex;
   align-items: center;
   gap: 4px;
+  flex-shrink: 0; /* Prevent result count from shrinking */
+}
+
+/* Responsive adjustments for filter bar */
+@media (max-width: 900px) {
+  .filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  
+  .search-container {
+    flex: 1 1 100%;
+    max-width: none;
+  }
+  
+  .filter-controls {
+    justify-content: space-between;
+    width: 100%;
+  }
 }
 
 .result-count strong {
@@ -4192,12 +4224,14 @@ body.dark-theme .status-bar {
   border: 1px solid var(--border-color);
   border-radius: 16px;
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 4px;
   transition: all 0.2s;
   white-space: nowrap;
   position: relative;
+  flex-shrink: 0; /* Prevent individual chips from shrinking */
+  min-width: fit-content;
 }
 
 .filter-chip:hover {

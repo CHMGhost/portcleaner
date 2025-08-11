@@ -171,10 +171,6 @@
       <!-- Filters and Search -->
       <div class="filter-bar">
         <div class="search-container">
-          <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="11" cy="11" r="5"></circle>
-            <line x1="15" y1="15" x2="21" y2="21"></line>
-          </svg>
           <input 
             type="text" 
             id="searchInput" 
@@ -189,19 +185,21 @@
             </svg>
           </button>
         </div>
-        <div class="filter-chips">
-          <button class="filter-chip active" data-filter="all" title="Show all ports">All</button>
-          <button class="filter-chip" data-filter="favorites" title="Show favorited ports">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
-            </svg>
-            Favorites
-          </button>
-          <button class="filter-chip" data-filter="critical" title="Show critical system ports">Critical ports</button>
-          <button class="filter-chip" data-filter="protected" title="Show protected processes">Protected</button>
-        </div>
-        <div class="result-count" id="resultCount">
-          Showing <strong id="visibleCount">0</strong> of <strong id="totalCount">0</strong> ports
+        <div class="filter-controls">
+          <div class="filter-chips">
+            <button class="filter-chip active" data-filter="all" title="Show all ports">All</button>
+            <button class="filter-chip" data-filter="favorites" title="Show favorited ports">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+              </svg>
+              Favorites
+            </button>
+            <button class="filter-chip" data-filter="critical" title="Show critical system ports">Critical ports</button>
+            <button class="filter-chip" data-filter="protected" title="Show protected processes">Protected</button>
+          </div>
+          <div class="result-count" id="resultCount">
+            Showing <strong id="visibleCount">0</strong> of <strong id="totalCount">0</strong> ports
+          </div>
         </div>
       </div>
       

@@ -739,7 +739,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const results = document.getElementById('results');
   const freePortInput = document.getElementById('freePortInput');
   const freePortBtn = document.getElementById('freePortBtn');
-  const getAllPortsBtn = document.getElementById('getAllPortsBtn');
   const refreshBtn = document.getElementById('refreshBtn');
   const allPortsList = document.getElementById('allPortsList');
   const portTableContainer = document.getElementById('portTableContainer') || document.getElementById('tableSection');
@@ -1310,18 +1309,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let progressToast = null;
     let progressTimeout = null;
     
-    // Show loading state
-    const btnText = getAllPortsBtn.querySelector('.btn-text');
-    const spinner = getAllPortsBtn.querySelector('.spinner');
-    
     if (!isAutoRefresh) {
       // Show skeleton loading in table
       showSkeletonLoading();
-      
-      if (btnText) btnText.textContent = 'Loading...';
-      if (spinner) spinner.style.display = 'inline-block';
-      getAllPortsBtn.disabled = true;
-      getAllPortsBtn.classList.add('loading');
       
       // Show progress indicator if operation takes > 2 seconds
       progressTimeout = setTimeout(() => {
@@ -1435,10 +1425,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (progressToast) removeToast(progressToast);
       // Reset button state
       if (!isAutoRefresh) {
-        if (btnText) btnText.textContent = 'View All Active Ports';
-        if (spinner) spinner.style.display = 'none';
-        getAllPortsBtn.disabled = false;
-        getAllPortsBtn.classList.remove('loading');
       } else {
         document.body.classList.remove('auto-refreshing');
         const portsTable = document.getElementById('portsTable');
@@ -1449,11 +1435,6 @@ document.addEventListener('DOMContentLoaded', () => {
       isRefreshing = false;
     }
   };
-  
-  // Get all ports button handler
-  getAllPortsBtn.addEventListener('click', () => {
-    refreshPorts(false);
-  });
   
   // Refresh button with improved loading state
   refreshBtn?.addEventListener('click', async () => {
@@ -3554,12 +3535,8 @@ Port Type: ${portType}`;
     // R key: Refresh (when not in input)
     if (e.key === 'r' && !e.metaKey && !e.ctrlKey && !isInputFocused) {
       e.preventDefault();
-      if (portsVisible) {
-        refreshPorts(false);
-        showToast('Refreshing ports...', 'info');
-      } else {
-        getAllPortsBtn?.click();
-      }
+      refreshPorts(false);
+      showToast('Refreshing ports...', 'info');
     }
     
     // Cmd/Ctrl + R: Force refresh (override browser refresh)

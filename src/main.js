@@ -8,6 +8,24 @@ let mainWindow = null;
 let tray = null;
 let activePortCount = 0;
 
+// Helper function to set dock icon
+function setDockIcon() {
+  if (process.platform === 'darwin' && app.dock) {
+    const { nativeImage } = require('electron');
+    const iconPath = path.join(__dirname, 'assets', 'icon.png');
+    if (require('fs').existsSync(iconPath)) {
+      try {
+        const image = nativeImage.createFromPath(iconPath);
+        if (!image.isEmpty()) {
+          app.dock.setIcon(image);
+        }
+      } catch (err) {
+        console.log('Could not set dock icon:', err.message);
+      }
+    }
+  }
+}
+
 // Critical system processes that should not be killed
 const PROTECTED_PROCESSES = [
   // System critical processes
@@ -37,7 +55,19 @@ const CRITICAL_PORTS = {
 };
 
 function createWindow() {
-  mainWindow = new BrowserWindow({
+  // Determine icon path based on platform
+  let iconPath;
+  if (process.platform === 'darwin') {
+    // For macOS, use PNG for window icon (icns is for app bundle)
+    iconPath = path.join(__dirname, 'assets', 'icon.png');
+  } else if (process.platform === 'win32') {
+    iconPath = path.join(__dirname, 'assets', 'icon.ico');
+  } else {
+    iconPath = path.join(__dirname, 'assets', 'icon256.png');
+  }
+  
+  // Only set icon if file exists
+  const windowConfig = {
     width: 800,
     height: 600,
     show: false, // Start hidden
@@ -46,7 +76,14 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false  // Security: keep this false
     }
-  });
+  };
+  
+  // Add icon if it exists
+  if (require('fs').existsSync(iconPath)) {
+    windowConfig.icon = iconPath;
+  }
+  
+  mainWindow = new BrowserWindow(windowConfig);
 
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
   // mainWindow.webContents.openDevTools(); // Commented out for production
@@ -113,6 +150,7 @@ function createTray() {
           // Show dock icon when window is visible (macOS)
           if (process.platform === 'darwin') {
             app.dock.show();
+            setDockIcon(); // Set custom icon
           }
         }
         updateTrayMenu(); // Update menu label
@@ -149,6 +187,7 @@ function updateTrayMenu() {
           // Show dock icon when window is visible for better UX (macOS)
           if (process.platform === 'darwin') {
             app.dock.show();
+            setDockIcon(); // Set custom icon
           }
         }
         updateTrayMenu(); // Update menu label
@@ -166,6 +205,7 @@ function updateTrayMenu() {
           // Show dock icon when showing results (macOS)
           if (process.platform === 'darwin') {
             app.dock.show();
+            setDockIcon(); // Set custom icon
           }
         }
         updateTrayMenu(); // Update menu label
@@ -242,6 +282,9 @@ async function quickScanPorts() {
 
 app.whenReady().then(() => {
   console.log('App is ready, creating tray and window...');
+  
+  // Set initial dock icon
+  setDockIcon();
   
   // Create tray first so app has menu bar presence immediately
   createTray();

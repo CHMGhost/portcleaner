@@ -96,7 +96,7 @@ body {
   display: flex;
   flex-direction: column;
   height: calc(100vh - 40px);
-  min-height: 400px; /* Ensure minimum height for filter visibility */
+  min-height: 500px; /* Increased to ensure table visibility */
   overflow: hidden;
 }
 
@@ -4047,7 +4047,7 @@ body.dark-theme .status-bar {
   overflow: hidden; /* Keep hidden for proper scrolling */
   padding: 0 30px 30px;
   min-width: 0; /* Allow section to shrink */
-  min-height: 200px; /* Minimum height to ensure filters remain visible */
+  min-height: 300px; /* Minimum height to ensure table and filters are visible */
   position: relative;
   box-sizing: border-box;
   width: 100%;
@@ -4056,14 +4056,18 @@ body.dark-theme .status-bar {
 @media (max-width: 768px) {
   .table-section {
     padding: 0 15px 15px;
-    min-height: 150px; /* Smaller minimum height for mobile */
+    min-height: 250px; /* Ensure enough space for table on mobile */
+  }
+  
+  .table-container {
+    min-height: 150px; /* Smaller minimum for mobile but still shows multiple rows */
   }
 }
 
 /* Very small windows - ensure filters are always visible */
 @media (max-height: 500px) {
   .container {
-    min-height: 300px;
+    min-height: 400px; /* Ensure enough space for table */
   }
   
   .app-header {
@@ -4092,7 +4096,7 @@ body.dark-theme .status-bar {
   }
   
   .table-section {
-    min-height: 100px;
+    min-height: 200px; /* Even in small windows, ensure table is visible */
     padding: 0 10px 10px;
   }
   
@@ -4105,6 +4109,25 @@ body.dark-theme .status-bar {
   
   .table-container {
     margin-top: 5px;
+    min-height: 150px; /* Increased minimum to show at least 4-5 rows */
+    max-height: calc(100vh - 200px); /* More space for table */
+  }
+  
+  /* Compact table styles for small windows */
+  #portsTable th {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  
+  #portsTable td {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+  
+  .stop-btn {
+    padding: 4px 8px;
+    font-size: 11px;
+    min-height: 26px;
   }
   
   .filter-chip {
@@ -4135,6 +4158,14 @@ body.dark-theme .status-bar {
 
 /* Extremely small windows - prioritize search bar visibility */
 @media (max-width: 400px) or (max-height: 400px) {
+  .container {
+    min-height: 350px; /* Ensure absolute minimum for usability */
+  }
+  
+  .table-container {
+    min-height: 100px; /* At least 2-3 rows visible */
+  }
+  
   .search-container {
     width: 100%;
     max-width: 100%;
@@ -4161,6 +4192,24 @@ body.dark-theme .status-bar {
     padding: 3px 6px;
     font-size: 11px;
   }
+  
+  /* Compact empty state for small windows */
+  .empty-state {
+    padding: 20px;
+  }
+  
+  .empty-state-icon {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .empty-state-title {
+    font-size: 16px;
+  }
+  
+  .empty-state-message {
+    font-size: 12px;
+  }
 }
 
 .table-container {
@@ -4171,7 +4220,8 @@ body.dark-theme .status-bar {
   border-radius: 8px;
   margin-top: 10px;
   min-width: 0; /* Allow container to shrink */
-  min-height: 0; /* Allow container to shrink vertically */
+  min-height: 200px; /* Minimum height to show at least 4-5 rows */
+  max-height: calc(100vh - 300px); /* Prevent excessive height */
 }
 
 /* ========================================

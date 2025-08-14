@@ -12,5 +12,21 @@ contextBridge.exposeInMainWorld('api', {
 // Keep the electron version API for backward compatibility
 contextBridge.exposeInMainWorld('electronAPI', {
   getVersion: () => process.versions.electron,
-  checkSystemRequirements: () => ipcRenderer.invoke('check-system-requirements')
+  checkSystemRequirements: () => ipcRenderer.invoke('check-system-requirements'),
+  
+  // Menu command handlers
+  receive: (channel, func) => {
+    const validChannels = ['focus-search', 'refresh-ports', 'toggle-theme', 'ports-updated', 'preferences-updated'];
+    if (validChannels.includes(channel)) {
+      ipcRenderer.on(channel, (event, ...args) => func(...args));
+    }
+  },
+  
+  // Preferences handlers
+  getPreferences: () => ipcRenderer.invoke('get-preferences'),
+  savePreferences: (prefs) => ipcRenderer.invoke('save-preferences', prefs),
+  resetPreferences: () => ipcRenderer.invoke('reset-preferences'),
+  exportSettings: () => ipcRenderer.invoke('export-settings'),
+  importSettings: () => ipcRenderer.invoke('import-settings'),
+  showPrivacyPolicy: () => ipcRenderer.invoke('show-privacy-policy')
 });

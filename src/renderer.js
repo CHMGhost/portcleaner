@@ -809,16 +809,54 @@ document.addEventListener('DOMContentLoaded', () => {
     darkIcon?.classList.add('hidden');
   }
   
-  // Load saved refresh interval
-  const savedRefreshInterval = localStorage.getItem(REFRESH_INTERVAL_KEY);
-  if (savedRefreshInterval && refreshIntervalSelect) {
-    refreshIntervalSelect.value = savedRefreshInterval;
-  }
+  // Initialize preferences connector
+  let preferencesInitialized = false;
   
-  // Load saved auto-refresh state
-  const savedAutoRefresh = localStorage.getItem(AUTO_REFRESH_KEY);
-  if (autoRefreshToggle) {
-    autoRefreshToggle.checked = savedAutoRefresh !== 'false';
+  // Initialize preferences after DOM is ready
+  if (window.preferencesConnector) {
+    window.preferencesConnector.initialize().then(() => {
+      preferencesInitialized = true;
+      
+      // Load auto-refresh settings from preferences
+      const autoRefreshEnabled = window.preferencesConnector.get('autoRefreshEnabled');
+      const refreshInterval = window.preferencesConnector.get('refreshInterval');
+      
+      if (autoRefreshEnabled !== undefined && autoRefreshToggle) {
+        autoRefreshToggle.checked = autoRefreshEnabled;
+      }
+      
+      if (refreshInterval !== undefined && refreshIntervalSelect) {
+        refreshIntervalSelect.value = refreshInterval;
+      }
+      
+      // Start auto-refresh if enabled
+      if (autoRefreshToggle && autoRefreshToggle.checked) {
+        startAutoRefresh();
+      }
+    }).catch(err => {
+      console.error('Failed to initialize preferences:', err);
+      // Fallback to localStorage for auto-refresh settings
+      const savedRefreshInterval = localStorage.getItem(REFRESH_INTERVAL_KEY);
+      if (savedRefreshInterval && refreshIntervalSelect) {
+        refreshIntervalSelect.value = savedRefreshInterval;
+      }
+      
+      const savedAutoRefresh = localStorage.getItem(AUTO_REFRESH_KEY);
+      if (autoRefreshToggle) {
+        autoRefreshToggle.checked = savedAutoRefresh !== 'false';
+      }
+    });
+  } else {
+    // Fallback to localStorage if preferences connector not available
+    const savedRefreshInterval = localStorage.getItem(REFRESH_INTERVAL_KEY);
+    if (savedRefreshInterval && refreshIntervalSelect) {
+      refreshIntervalSelect.value = savedRefreshInterval;
+    }
+    
+    const savedAutoRefresh = localStorage.getItem(AUTO_REFRESH_KEY);
+    if (autoRefreshToggle) {
+      autoRefreshToggle.checked = savedAutoRefresh !== 'false';
+    }
   }
   
   // Apply saved filters
@@ -2188,8 +2226,14 @@ Port Type: ${portType}`;
   }
   
   // Auto-refresh toggle handler with live indicator
-  autoRefreshToggle.addEventListener('change', () => {
-    localStorage.setItem(AUTO_REFRESH_KEY, autoRefreshToggle.checked);
+  autoRefreshToggle.addEventListener('change', async () => {
+    // Save to preferences if available, otherwise use localStorage
+    if (preferencesInitialized && window.preferencesConnector) {
+      await window.preferencesConnector.set('autoRefreshEnabled', autoRefreshToggle.checked);
+    } else {
+      localStorage.setItem(AUTO_REFRESH_KEY, autoRefreshToggle.checked);
+    }
+    
     const liveIndicator = document.getElementById('liveIndicator');
     
     if (autoRefreshToggle.checked) {
@@ -2212,8 +2256,14 @@ Port Type: ${portType}`;
   });
   
   // Refresh interval change handler
-  refreshIntervalSelect.addEventListener('change', () => {
-    localStorage.setItem(REFRESH_INTERVAL_KEY, refreshIntervalSelect.value);
+  refreshIntervalSelect.addEventListener('change', async () => {
+    // Save to preferences if available, otherwise use localStorage
+    if (preferencesInitialized && window.preferencesConnector) {
+      await window.preferencesConnector.set('refreshInterval', refreshIntervalSelect.value);
+    } else {
+      localStorage.setItem(REFRESH_INTERVAL_KEY, refreshIntervalSelect.value);
+    }
+    
     if (autoRefreshToggle.checked) {
       startAutoRefresh();
     }
@@ -4240,6 +4290,76 @@ Port Type: ${portType}`;
     // Set version info
     if (versionInfo) {
       versionInfo.textContent = 'PortCleaner v1.0.0';
+    }
+    
+    // Listen for IPC messages from main process (menu commands)
+    if (window.electronAPI && window.electronAPI.receive) {
+      window.electronAPI.receive('focus-search', () => {
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+          searchInput.focus();
+          searchInput.select();
+        }
+      });
+      
+      window.electronAPI.receive('refresh-ports', () => {
+        refreshPorts(false);
+      });
+      
+      window.electronAPI.receive('toggle-theme', () => {
+        toggleTheme();
+      });
+      
+      window.electronAPI.receive('ports-updated', (ports) => {
+        if (ports && Array.isArray(ports)) {
+          displayPorts(ports);
+        }
+      });
+      
+      // Handle preferences updates from main process
+      window.electronAPI.receive('preferences-updated', (prefs) => {
+        console.log('Preferences updated:', prefs);
+        
+        // Update auto-refresh settings if they changed
+        if (prefs.autoRefreshEnabled !== undefined) {
+          const autoRefreshToggle = document.getElementById('autoRefreshToggle');
+          if (autoRefreshToggle && autoRefreshToggle.checked !== prefs.autoRefreshEnabled) {
+            autoRefreshToggle.checked = prefs.autoRefreshEnabled;
+            
+            // Update UI state
+            const liveIndicator = document.getElementById('liveIndicator');
+            if (prefs.autoRefreshEnabled) {
+              startAutoRefresh();
+              updateAutoRefreshStatus(true);
+              if (liveIndicator) {
+                liveIndicator.classList.remove('paused');
+                const liveText = liveIndicator.querySelector('.live-text');
+                if (liveText) liveText.textContent = 'Live';
+              }
+            } else {
+              stopAutoRefresh();
+              updateAutoRefreshStatus(false);
+              if (liveIndicator) {
+                liveIndicator.classList.add('paused');
+                const liveText = liveIndicator.querySelector('.live-text');
+                if (liveText) liveText.textContent = 'Paused';
+              }
+            }
+          }
+        }
+        
+        if (prefs.refreshInterval !== undefined) {
+          const refreshIntervalSelect = document.getElementById('refreshInterval');
+          if (refreshIntervalSelect && refreshIntervalSelect.value !== prefs.refreshInterval) {
+            refreshIntervalSelect.value = prefs.refreshInterval;
+            
+            // Restart auto-refresh with new interval if enabled
+            if (autoRefreshToggle && autoRefreshToggle.checked) {
+              startAutoRefresh();
+            }
+          }
+        }
+      });
     }
   }, 100);
 });

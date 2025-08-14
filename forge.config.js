@@ -3,6 +3,8 @@ const { FuseV1Options, FuseVersion } = require('@electron/fuses');
 
 module.exports = {
   packagerConfig: {
+    name: 'PortCleaner',
+    productName: 'PortCleaner',
     asar: true,
     icon: process.platform === 'darwin' ? './src/assets/icon.icns' : './src/assets/icon',
     appBundleId: 'com.portcleaner.app',

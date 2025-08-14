@@ -1,7 +1,8 @@
 {
-  "name": "portcleaner",
+  "name": "PortCleaner",
+  "productName": "PortCleaner",
   "version": "1.0.0",
-  "description": "",
+  "description": "A powerful port management utility for macOS",
   "main": "src/main.js",
   "scripts": {
     "start": "electron-forge start",
@@ -42,6 +43,7 @@
   },
   "dependencies": {
     "claude": "^0.1.1",
-    "electron-squirrel-startup": "^1.0.1"
+    "electron-squirrel-startup": "^1.0.1",
+    "electron-store": "^10.1.0"
   }
 }

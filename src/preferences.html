@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Preferences</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';">
+  <style>
+    :root, [data-theme="light"] {
+      --bg-primary: #f5f5f5;
+      --bg-secondary: #ffffff;
+      --text-primary: #2d3748;
+      --text-secondary: #718096;
+      --border-color: #e2e8f0;
+      --accent: #3b82f6;
+      --hover-bg: #f0f0f0;
+    }
+    
+    [data-theme="dark"] {
+      --bg-primary: #1a1a1a;
+      --bg-secondary: #2d2d2d;
+      --text-primary: #e2e8f0;
+      --text-secondary: #a0aec0;
+      --border-color: #4a5568;
+      --accent: #60a5fa;
+      --hover-bg: #3a3a3a;
+    }
+    
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+    }
+    
+    .preferences-container {
+      display: flex;
+      height: 100vh;
+    }
+    
+    .sidebar {
+      width: 200px;
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border-color);
+      padding: 20px 0;
+    }
+    
+    .sidebar-item {
+      padding: 10px 20px;
+      cursor: pointer;
+      transition: background 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .sidebar-item:hover {
+      background: var(--hover-bg);
+    }
+    
+    .sidebar-item.active {
+      background: var(--accent);
+      color: white;
+    }
+    
+    .content {
+      flex: 1;
+      padding: 30px;
+      overflow-y: auto;
+    }
+    
+    .section {
+      display: none;
+      animation: fadeIn 0.3s;
+    }
+    
+    .section.active {
+      display: block;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    h2 {
+      margin-top: 0;
+      margin-bottom: 20px;
+      font-size: 24px;
+    }
+    
+    .preference-group {
+      margin-bottom: 25px;
+      padding: 20px;
+      background: var(--bg-secondary);
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+    }
+    
+    .preference-group h3 {
+      margin-top: 0;
+      margin-bottom: 15px;
+      font-size: 16px;
+      font-weight: 600;
+    }
+    
+    .preference-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 15px;
+    }
+    
+    .preference-item:last-child {
+      margin-bottom: 0;
+    }
+    
+    .preference-label {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex: 1;
+    }
+    
+    .preference-label span {
+      font-size: 14px;
+      font-weight: 500;
+    }
+    
+    .preference-label small {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    
+    input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+    
+    input[type="number"],
+    input[type="text"],
+    select {
+      padding: 8px 12px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      font-size: 14px;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-width: 120px;
+    }
+    
+    input[type="number"]:focus,
+    input[type="text"]:focus,
+    select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+    }
+    
+    button {
+      padding: 8px 16px;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: opacity 0.2s;
+    }
+    
+    button:hover {
+      opacity: 0.9;
+    }
+    
+    .buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border-color);
+    }
+    
+  </style>
+</head>
+<body>
+  <div class="preferences-container">
+    <div class="sidebar">
+      <div class="sidebar-item active" data-section="general">
+        <span>General</span>
+      </div>
+      <div class="sidebar-item" data-section="appearance">
+        <span>Appearance</span>
+      </div>
+      <div class="sidebar-item" data-section="behavior">
+        <span>Behavior</span>
+      </div>
+      <div class="sidebar-item" data-section="advanced">
+        <span>Advanced</span>
+      </div>
+    </div>
+    
+    <div class="content">
+      <!-- General Section -->
+      <div class="section active" id="general">
+        <h2>General</h2>
+        
+        <div class="preference-group">
+          <h3>Startup</h3>
+          <div class="preference-item">
+            <div class="preference-label">
+              <span>Launch at startup</span>
+              <small>Start PortCleaner when you log in</small>
+            </div>
+            <input type="checkbox" id="launchAtStartup">
+          </div>
+          <div class="preference-item">
+            <div class="preference-label">
+              <span>Start minimized</span>
+              <small>Start in the menu bar without showing window</small>
+            </div>
+            <input type="checkbox" id="startMinimized" checked>
+          </div>
+        </div>
+        
+        <div class="preference-group">
+          <h3>Auto-refresh</h3>
+          <div class="preference-item">
+            <div class="preference-label">
+              <span>Enable auto-refresh</span>
+              <small>Automatically refresh port list</small>
+            </div>
+            <input type="checkbox" id="autoRefreshEnabled" checked>
+          </div>
+          <div class="preference-item">
+            <div class="preference-label">
+              <span>Refresh interval</span>
+              <small>How often to refresh ports</small>
+            </div>
+            <select id="refreshInterval">
+              <option value="1000">1 second</option>
+              <option value="2000">2 seconds</option>
+              <option value="5000" selected>5 seconds</option>
+              <option value="10000">10 seconds</option>
+              <option value="30000">30 seconds</option>
+              <option value="60000">1 minute</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Appearance Section -->
+      <div class="section" id="appearance">
+        <h2>Appearance</h2>
+        
+        <div class="preference-group">
+          <h3>Theme</h3>
+          <div class="preference-item">
+            <div class="preference-label">
+              <span>Color theme</span>
+              <small>Choose your preferred color scheme</small>
+            </div>
+            <select id="theme">
+              <option value="system">System</option>
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="preference-group">
+          <h3>Display</h3>
+          <div class="preference-item">
+            <div class="preference-label">
+              <span>Show port icons</span>
+              <small>Display icons for known services</small>
+            </div>
+            <input type="checkbox" id="showPortIcons" checked>
+          </div>
+          <div class="preference-item">
+            <div class="preference-label">
+              <span>Compact mode</span>
+              <small>Reduce spacing for more information</small>
+            </div>
+            <input type="checkbox" id="compactMode">
+          </div>
+        </div>
+      </div>
+      
+      <!-- Behavior Section -->
+      <div class="section" id="behavior">
+        <h2>Behavior</h2>
+        
+        <div class="preference-group">
+          <h3>Confirmations</h3>
+          <div class="preference-item">
+            <div class="preference-label">
+              <span>Confirm before stopping processes</span>
+              <small>Show confirmation dialog</small>
+            </div>
+            <input type="checkbox" id="confirmStop" checked>
+          </div>
+          <div class="preference-item">
+            <div class="preference-label">
+              <span>Warn about protected processes</span>
+              <small>Show warnings for system processes</small>
+            </div>
+            <input type="checkbox" id="warnProtected" checked>
+          </div>
+        </div>
+        
+        <div class="preference-group">
+          <h3>Notifications</h3>
+          <div class="preference-item">
+            <div class="preference-label">
+              <span>Show notifications</span>
+              <small>Display system notifications for actions</small>
+            </div>
+            <input type="checkbox" id="showNotifications" checked>
+          </div>
+          <div class="preference-item">
+            <div class="preference-label">
+              <span>Sound alerts</span>
+              <small>Play sounds for important events</small>
+            </div>
+            <input type="checkbox" id="soundAlerts">
+          </div>
+        </div>
+      </div>
+      
+      <!-- Advanced Section -->
+      <div class="section" id="advanced">
+        <h2>Advanced</h2>
+        
+        <div class="preference-group">
+          <h3>Telemetry & Privacy</h3>
+          <div class="preference-item">
+            <div class="preference-label">
+              <span>Share anonymous usage data</span>
+              <small>Help improve PortCleaner by sharing anonymous usage statistics</small>
+            </div>
+            <input type="checkbox" id="telemetryEnabled">
+          </div>
+          <div class="preference-item">
+            <div class="preference-label">
+              <span>What we collect</span>
+              <small style="line-height: 1.4;">
+                • App crashes and errors (anonymous)<br>
+                • Feature usage patterns (no personal data)<br>
+                • System info (OS, Electron version)<br>
+                • Performance metrics<br>
+                <a href="#" id="privacyPolicy" style="color: var(--accent);">View Privacy Policy</a>
+              </small>
+            </div>
+          </div>
+        </div>
+        
+        <div class="preference-group">
+          <h3>Performance</h3>
+          <div class="preference-item">
+            <div class="preference-label">
+              <span>Max ports to display</span>
+              <small>Limit for better performance</small>
+            </div>
+            <input type="number" id="maxPorts" value="1000" min="100" max="10000">
+          </div>
+          <div class="preference-item">
+            <div class="preference-label">
+              <span>Enable virtualization</span>
+              <small>Use virtual scrolling for large lists</small>
+            </div>
+            <input type="checkbox" id="enableVirtualization" checked>
+          </div>
+        </div>
+        
+        <div class="preference-group">
+          <h3>Developer</h3>
+          <div class="preference-item">
+            <div class="preference-label">
+              <span>Show hidden processes</span>
+              <small>Display system and hidden processes</small>
+            </div>
+            <input type="checkbox" id="showHidden">
+          </div>
+          <div class="preference-item">
+            <div class="preference-label">
+              <span>Debug mode</span>
+              <small>Enable debug logging</small>
+            </div>
+            <input type="checkbox" id="debugMode">
+          </div>
+        </div>
+        
+        <div class="buttons">
+          <button id="resetDefaults">Reset to Defaults</button>
+          <button id="exportSettings">Export Settings</button>
+          <button id="importSettings">Import Settings</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script src="preferences.js"></script>
+</body>
+</html>

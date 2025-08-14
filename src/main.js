@@ -1,12 +1,17 @@
-const { app, BrowserWindow, ipcMain, dialog, Menu, Tray, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Menu, Tray, nativeImage, shell, nativeTheme } = require('electron');
 const path = require('path');
 const PortManager = require('./utils/portManager');
 const { createTrayIcon, createStatusIcon } = require('./utils/trayIcon');
+const telemetry = require('./utils/telemetry');
+
+// Set app name early for macOS menu
+app.setName('PortCleaner');
 
 const portManager = new PortManager();
 let mainWindow = null;
 let tray = null;
 let activePortCount = 0;
+let preferencesWindow = null;
 
 // Helper function to set dock icon
 function setDockIcon() {
@@ -21,6 +26,33 @@ function setDockIcon() {
         }
       } catch (err) {
         console.log('Could not set dock icon:', err.message);
+      }
+    }
+  }
+}
+
+// Set app icon for share menu and other system integrations
+function setAppIcon() {
+  if (process.platform === 'darwin') {
+    // For macOS, set the icon that will be used in share sheets and other system UI
+    const iconPath = path.join(__dirname, 'assets', 'icon.png');
+    if (require('fs').existsSync(iconPath)) {
+      try {
+        const image = nativeImage.createFromPath(iconPath);
+        if (!image.isEmpty()) {
+          // This sets the icon for share menu and other system integrations
+          app.setName('PortCleaner');
+          // Set the app's about panel icon
+          app.setAboutPanelOptions({
+            applicationName: 'PortCleaner',
+            applicationVersion: app.getVersion(),
+            copyright: '© 2025 PortCleaner',
+            version: app.getVersion(),
+            iconPath: iconPath
+          });
+        }
+      } catch (err) {
+        console.log('Could not set app icon:', err.message);
       }
     }
   }
@@ -70,6 +102,7 @@ function createWindow() {
   const windowConfig = {
     width: 800,
     height: 600,
+    title: 'PortCleaner',
     show: false, // Start hidden
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -245,6 +278,7 @@ function updateTrayMenu() {
 // Quick scan function
 async function quickScanPorts() {
   try {
+    telemetry.trackAction('quick_scan', 'port_actions');
     const ports = await portManager.getAllPorts();
     activePortCount = ports.length;
     
@@ -280,22 +314,408 @@ async function quickScanPorts() {
   }
 }
 
-app.whenReady().then(() => {
+// Create application menu
+function createApplicationMenu() {
+  const isMac = process.platform === 'darwin';
+  
+  const template = [
+    // App menu (macOS only)
+    ...(isMac ? [{
+      label: 'PortCleaner',
+      submenu: [
+        { 
+          label: 'About PortCleaner',
+          click: () => showAboutDialog()
+        },
+        { type: 'separator' },
+        {
+          label: 'Preferences...',
+          accelerator: 'CmdOrCtrl+,',
+          click: () => showPreferences()
+        },
+        { type: 'separator' },
+        {
+          label: 'Services',
+          role: 'services',
+          submenu: []
+        },
+        { type: 'separator' },
+        {
+          label: 'Hide PortCleaner',
+          accelerator: 'CmdOrCtrl+H',
+          role: 'hide'
+        },
+        {
+          label: 'Hide Others',
+          accelerator: 'CmdOrCtrl+Shift+H',
+          role: 'hideOthers'
+        },
+        {
+          label: 'Show All',
+          role: 'unhide'
+        },
+        { type: 'separator' },
+        {
+          label: 'Quit PortCleaner',
+          accelerator: 'CmdOrCtrl+Q',
+          click: () => {
+            app.isQuitting = true;
+            app.quit();
+          }
+        }
+      ]
+    }] : []),
+    
+    // File menu
+    {
+      label: 'File',
+      submenu: [
+        {
+          label: 'Refresh Ports',
+          accelerator: 'CmdOrCtrl+R',
+          click: () => {
+            mainWindow?.webContents.send('refresh-ports');
+          }
+        },
+        {
+          label: 'Export Ports...',
+          accelerator: 'CmdOrCtrl+E',
+          enabled: false, // Future feature
+          click: () => {
+            // TODO: Implement export functionality
+          }
+        },
+        { type: 'separator' },
+        ...(isMac ? [] : [
+          {
+            label: 'Preferences...',
+            accelerator: 'CmdOrCtrl+,',
+            click: () => showPreferences()
+          },
+          { type: 'separator' },
+          {
+            label: 'Exit',
+            click: () => {
+              app.isQuitting = true;
+              app.quit();
+            }
+          }
+        ])
+      ]
+    },
+    
+    // Edit menu
+    {
+      label: 'Edit',
+      submenu: [
+        { label: 'Undo', accelerator: 'CmdOrCtrl+Z', role: 'undo' },
+        { label: 'Redo', accelerator: 'Shift+CmdOrCtrl+Z', role: 'redo' },
+        { type: 'separator' },
+        { label: 'Cut', accelerator: 'CmdOrCtrl+X', role: 'cut' },
+        { label: 'Copy', accelerator: 'CmdOrCtrl+C', role: 'copy' },
+        { label: 'Paste', accelerator: 'CmdOrCtrl+V', role: 'paste' },
+        { label: 'Select All', accelerator: 'CmdOrCtrl+A', role: 'selectAll' },
+        { type: 'separator' },
+        {
+          label: 'Find...',
+          accelerator: 'CmdOrCtrl+F',
+          click: () => {
+            mainWindow?.webContents.send('focus-search');
+          }
+        }
+      ]
+    },
+    
+    // View menu
+    {
+      label: 'View',
+      submenu: [
+        {
+          label: 'Toggle Theme',
+          accelerator: 'CmdOrCtrl+T',
+          click: () => {
+            mainWindow?.webContents.send('toggle-theme');
+          }
+        },
+        { type: 'separator' },
+        { label: 'Reload', accelerator: 'CmdOrCtrl+Shift+R', role: 'reload' },
+        { label: 'Force Reload', accelerator: 'CmdOrCtrl+Shift+F', role: 'forceReload' },
+        { label: 'Toggle Developer Tools', accelerator: 'F12', role: 'toggleDevTools' },
+        { type: 'separator' },
+        { label: 'Actual Size', accelerator: 'CmdOrCtrl+0', role: 'resetZoom' },
+        { label: 'Zoom In', accelerator: 'CmdOrCtrl+Plus', role: 'zoomIn' },
+        { label: 'Zoom Out', accelerator: 'CmdOrCtrl+-', role: 'zoomOut' },
+        { type: 'separator' },
+        { label: 'Toggle Fullscreen', accelerator: 'F11', role: 'togglefullscreen' }
+      ]
+    },
+    
+    // Window menu
+    {
+      label: 'Window',
+      submenu: [
+        { label: 'Minimize', accelerator: 'CmdOrCtrl+M', role: 'minimize' },
+        { label: 'Close', accelerator: 'CmdOrCtrl+W', role: 'close' },
+        ...(isMac ? [
+          { type: 'separator' },
+          { label: 'Bring All to Front', role: 'front' },
+          { type: 'separator' },
+          { label: 'PortCleaner', accelerator: 'CmdOrCtrl+1', 
+            click: () => {
+              mainWindow?.show();
+              mainWindow?.focus();
+            }
+          }
+        ] : [])
+      ]
+    },
+    
+    // Help menu
+    {
+      label: 'Help',
+      role: 'help',
+      submenu: [
+        {
+          label: 'Documentation',
+          click: () => {
+            shell.openExternal('https://github.com/yourusername/portcleaner#readme');
+          }
+        },
+        {
+          label: 'Report Issue',
+          click: () => {
+            shell.openExternal('https://github.com/yourusername/portcleaner/issues');
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Keyboard Shortcuts',
+          click: () => showKeyboardShortcuts()
+        },
+        { type: 'separator' },
+        ...(isMac ? [] : [
+          {
+            label: 'About PortCleaner',
+            click: () => showAboutDialog()
+          }
+        ])
+      ]
+    }
+  ];
+  
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
+}
+
+// Show About dialog
+function showAboutDialog() {
+  const version = app.getVersion();
+  const electronVersion = process.versions.electron;
+  const nodeVersion = process.versions.node;
+  
+  // Use the app's about panel on macOS for native feel
+  if (process.platform === 'darwin') {
+    app.showAboutPanel();
+  } else {
+    dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      title: 'About PortCleaner',
+      message: 'PortCleaner',
+      detail: `Version: ${version}\n` +
+              `A modern port management utility for developers.\n\n` +
+              `Electron: ${electronVersion}\n` +
+              `Node: ${nodeVersion}\n\n` +
+              `© 2024 PortCleaner. All rights reserved.`,
+      buttons: ['OK'],
+      icon: nativeImage.createFromPath(path.join(__dirname, 'assets', 'icon256.png'))
+    });
+  }
+}
+
+// Show Preferences window
+function showPreferences() {
+  if (preferencesWindow) {
+    preferencesWindow.focus();
+    return;
+  }
+  
+  preferencesWindow = new BrowserWindow({
+    width: 600,
+    height: 400,
+    parent: mainWindow,
+    modal: false,
+    show: false,
+    title: 'Preferences',
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#1a1a1a' : '#f5f5f5',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
+  
+  // Load preferences HTML (to be created)
+  preferencesWindow.loadFile(path.join(__dirname, 'preferences.html'));
+  
+  preferencesWindow.once('ready-to-show', () => {
+    preferencesWindow.show();
+  });
+  
+  preferencesWindow.on('closed', () => {
+    preferencesWindow = null;
+  });
+}
+
+// Show keyboard shortcuts
+function showKeyboardShortcuts() {
+  dialog.showMessageBox(mainWindow, {
+    type: 'info',
+    title: 'Keyboard Shortcuts',
+    message: 'Keyboard Shortcuts',
+    detail: `Main Shortcuts:\n` +
+            `⌘F / Ctrl+F - Focus search\n` +
+            `⌘R / Ctrl+R - Refresh ports\n` +
+            `⌘T / Ctrl+T - Toggle theme\n` +
+            `⌘, / Ctrl+, - Open preferences\n` +
+            `⌘Q / Ctrl+Q - Quit application\n\n` +
+            `Port Actions:\n` +
+            `Enter - Stop selected port\n` +
+            `/ - Quick search\n` +
+            `Escape - Clear search\n` +
+            `A - Toggle auto-refresh`,
+    buttons: ['OK']
+  });
+}
+
+// Show telemetry opt-in dialog
+async function showTelemetryOptInDialog() {
+  const result = await dialog.showMessageBox(null, {
+    type: 'question',
+    title: 'Help Improve PortCleaner',
+    message: 'Help us improve PortCleaner',
+    detail: 'Would you like to share anonymous usage data to help us improve PortCleaner?\n\n' +
+            'We collect:\n' +
+            '• Anonymous usage statistics\n' +
+            '• Crash reports and errors\n' +
+            '• Feature usage patterns\n' +
+            '• System information (OS, version)\n\n' +
+            'We NEVER collect:\n' +
+            '• Personal information\n' +
+            '• Port data or process names\n' +
+            '• Network traffic\n' +
+            '• File paths or contents\n\n' +
+            'You can change this setting anytime in Preferences.',
+    buttons: ['Share Anonymous Data', 'No Thanks'],
+    defaultId: 0,
+    cancelId: 1,
+    noLink: true
+  });
+  
+  const telemetryEnabled = result.response === 0;
+  
+  // Save preference
+  const prefs = store.get('preferences', {});
+  prefs.telemetryEnabled = telemetryEnabled;
+  store.set('preferences', prefs);
+  store.set('hasSeenTelemetryPrompt', true);
+  
+  // Enable/disable telemetry
+  telemetry.setEnabled(telemetryEnabled);
+  
+  return telemetryEnabled;
+}
+
+// Show privacy policy
+function showPrivacyPolicy() {
+  dialog.showMessageBox(preferencesWindow || mainWindow, {
+    type: 'info',
+    title: 'Privacy Policy',
+    message: 'PortCleaner Privacy Policy',
+    detail: 'PortCleaner respects your privacy and is committed to protecting your data.\n\n' +
+            'WHAT WE COLLECT (when telemetry is enabled):\n' +
+            '• Anonymous user ID (hashed machine identifier)\n' +
+            '• App version and system information\n' +
+            '• Feature usage statistics\n' +
+            '• Error and crash reports\n' +
+            '• Performance metrics\n\n' +
+            'WHAT WE DO NOT COLLECT:\n' +
+            '• Personal information or identifiable data\n' +
+            '• Process names or port details\n' +
+            '• Network traffic or connections\n' +
+            '• File contents or paths\n' +
+            '• Location information\n\n' +
+            'HOW WE USE DATA:\n' +
+            '• Improve app stability and performance\n' +
+            '• Understand feature usage patterns\n' +
+            '• Fix bugs and crashes\n' +
+            '• Plan future improvements\n\n' +
+            'DATA SECURITY:\n' +
+            '• All data is transmitted securely\n' +
+            '• Data is anonymized and aggregated\n' +
+            '• We do not sell or share data with third parties\n' +
+            '• Data is retained for 90 days\n\n' +
+            'YOUR RIGHTS:\n' +
+            '• Telemetry is completely optional\n' +
+            '• You can disable it anytime in Preferences\n' +
+            '• Disabling telemetry immediately stops data collection\n\n' +
+            'For questions, contact: me@minorkeith.com',
+    buttons: ['OK']
+  });
+}
+
+// Set app icon early for share menu
+setAppIcon();
+
+app.whenReady().then(async () => {
   console.log('App is ready, creating tray and window...');
   
-  // Set initial dock icon
+  // Initialize telemetry
+  telemetry.initialize(store);
+  
+  // Check for first launch and show telemetry opt-in
+  const hasSeenTelemetryPrompt = store.get('hasSeenTelemetryPrompt', false);
+  if (!hasSeenTelemetryPrompt) {
+    await showTelemetryOptInDialog();
+  }
+  
+  // Track app launch
+  telemetry.trackEvent('app_launched', {
+    firstLaunch: !hasSeenTelemetryPrompt
+  });
+  
+  // Update app launch stats
+  const stats = store.get('usageStats', {});
+  stats.appLaunches = (stats.appLaunches || 0) + 1;
+  store.set('usageStats', stats);
+  store.set('sessionStart', Date.now());
+  
+  // Set initial dock icon and app icon again
   setDockIcon();
+  setAppIcon();
+  
+  // Create application menu
+  createApplicationMenu();
   
   // Create tray first so app has menu bar presence immediately
   createTray();
   createWindow();
   
-  // Show window on first run to help users find the app
+  // Show window based on preferences
+  const prefs = store.get('preferences', {});
+  const isFirstRun = !store.has('hasSeenApp');
+  
   setTimeout(() => {
     if (mainWindow && !mainWindow.isVisible()) {
-      console.log('Showing main window for first run...');
-      mainWindow.show();
-      mainWindow.focus();
+      if (isFirstRun) {
+        store.set('hasSeenApp', true);
+        console.log('Showing main window for first run...');
+        mainWindow.show();
+        mainWindow.focus();
+      } else if (!prefs.startMinimized) {
+        console.log('Showing main window (startMinimized is false)...');
+        mainWindow.show();
+        mainWindow.focus();
+      }
     }
   }, 500);
   
@@ -317,6 +737,22 @@ app.whenReady().then(() => {
 app.on('window-all-closed', (event) => {
   // Prevent the app from quitting
   event.preventDefault();
+});
+
+// Clean up telemetry on app quit
+app.on('before-quit', () => {
+  // Track app quit
+  telemetry.trackEvent('app_quit');
+  
+  // Update total usage time
+  const stats = store.get('usageStats', {});
+  const sessionStart = store.get('sessionStart', Date.now());
+  const sessionDuration = Date.now() - sessionStart;
+  stats.totalUsageTime = (stats.totalUsageTime || 0) + sessionDuration;
+  store.set('usageStats', stats);
+  
+  // Flush telemetry and clean up
+  telemetry.destroy();
 });
 
 app.on('activate', () => {
@@ -401,6 +837,11 @@ function validateProcessProtection(pid, processName, port) {
 ipcMain.handle('kill-process', async (event, pid, processName, port, forceStop = false) => {
   console.log('Kill process called with:', { pid, processName, port, forceStop });
   try {
+    // Track kill attempt
+    telemetry.trackAction('kill_process_attempt', 'port_actions', {
+      port,
+      forceStop
+    });
     // Server-side protection validation
     const protection = validateProcessProtection(pid, processName, port);
     
@@ -517,6 +958,19 @@ ipcMain.handle('kill-process', async (event, pid, processName, port, forceStop =
       console.log('User confirmed kill, calling portManager.killProcess with:', pid, processName);
       const killResult = await portManager.killProcess(pid, processName);
       console.log('Kill result:', killResult);
+      
+      // Track successful kill
+      if (killResult.success) {
+        telemetry.trackAction('kill_process_success', 'port_actions', {
+          port
+        });
+        
+        // Update usage stats
+        const stats = store.get('usageStats', {});
+        stats.processesKilled = (stats.processesKilled || 0) + 1;
+        store.set('usageStats', stats);
+      }
+      
       return killResult;
     } else {
       return { success: false, error: 'User cancelled' };
@@ -529,6 +983,7 @@ ipcMain.handle('kill-process', async (event, pid, processName, port, forceStop =
 
 ipcMain.handle('get-all-ports', async (event) => {
   try {
+    telemetry.trackAction('scan_ports', 'port_actions');
     const result = await portManager.getAllPorts();
     
     // Check if it's an error response
@@ -575,6 +1030,15 @@ ipcMain.handle('get-all-ports', async (event) => {
     activePortCount = enrichedPorts.length;
     tray?.setToolTip(`PortCleaner - ${activePortCount} active ports`);
     updateTrayMenu();
+    
+    // Update usage stats
+    const stats = store.get('usageStats', {});
+    stats.portsScanned = (stats.portsScanned || 0) + enrichedPorts.length;
+    stats.lastUsed = Date.now();
+    store.set('usageStats', stats);
+    
+    // Track performance
+    telemetry.trackPerformance('port_scan_count', enrichedPorts.length, 'count');
     
     return { 
       success: true, 
@@ -696,4 +1160,130 @@ ipcMain.handle('check-system-commands', async () => {
   } catch (error) {
     return { available: false };
   }
+});
+
+// Preferences handlers  
+let store;
+try {
+  const Store = require('electron-store');
+  store = new Store.default ? new Store.default() : new Store();
+} catch (e) {
+  console.log('electron-store not available, using in-memory storage');
+  // Fallback to in-memory storage
+  const memoryStore = {};
+  store = {
+    get: (key, defaultValue) => memoryStore[key] || defaultValue,
+    set: (key, value) => { memoryStore[key] = value; },
+    delete: (key) => { delete memoryStore[key]; }
+  };
+}
+
+ipcMain.handle('get-preferences', () => {
+  return store.get('preferences', {
+    launchAtStartup: false,
+    startMinimized: true,
+    autoRefreshEnabled: true,
+    refreshInterval: 5000,
+    theme: 'system',
+    showPortIcons: true,
+    compactMode: false,
+    confirmStop: true,
+    warnProtected: true,
+    showNotifications: true,
+    soundAlerts: false,
+    maxPorts: 1000,
+    enableVirtualization: true,
+    showHidden: false,
+    debugMode: false,
+    telemetryEnabled: false
+  });
+});
+
+ipcMain.handle('save-preferences', (event, prefs) => {
+  store.set('preferences', prefs);
+  
+  // Handle telemetry preference change
+  if (prefs.telemetryEnabled !== undefined) {
+    telemetry.setEnabled(prefs.telemetryEnabled);
+    telemetry.trackAction('preferences_changed', 'settings', {
+      telemetryEnabled: prefs.telemetryEnabled
+    });
+  }
+  
+  // Apply preferences that need immediate action
+  if (prefs.launchAtStartup !== undefined) {
+    app.setLoginItemSettings({
+      openAtLogin: prefs.launchAtStartup
+    });
+  }
+  
+  // Send preferences update to renderer
+  mainWindow?.webContents.send('preferences-updated', prefs);
+  
+  return { success: true };
+});
+
+ipcMain.handle('reset-preferences', () => {
+  store.delete('preferences');
+  return { success: true };
+});
+
+ipcMain.handle('export-settings', async () => {
+  const { dialog } = require('electron');
+  const fs = require('fs').promises;
+  
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: 'Export Settings',
+    defaultPath: 'portcleaner-settings.json',
+    filters: [
+      { name: 'JSON', extensions: ['json'] }
+    ]
+  });
+  
+  if (!result.canceled) {
+    const settings = store.get('preferences', {});
+    await fs.writeFile(result.filePath, JSON.stringify(settings, null, 2));
+    return { success: true };
+  }
+  
+  return { success: false, canceled: true };
+});
+
+ipcMain.handle('show-privacy-policy', () => {
+  showPrivacyPolicy();
+  return { success: true };
+});
+
+ipcMain.handle('import-settings', async () => {
+  const { dialog } = require('electron');
+  const fs = require('fs').promises;
+  
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: 'Import Settings',
+    filters: [
+      { name: 'JSON', extensions: ['json'] }
+    ],
+    properties: ['openFile']
+  });
+  
+  if (!result.canceled && result.filePaths.length > 0) {
+    try {
+      const content = await fs.readFile(result.filePaths[0], 'utf8');
+      const settings = JSON.parse(content);
+      store.set('preferences', settings);
+      
+      // Apply settings
+      if (settings.launchAtStartup !== undefined) {
+        app.setLoginItemSettings({
+          openAtLogin: settings.launchAtStartup
+        });
+      }
+      
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+  
+  return { success: false, canceled: true };
 });

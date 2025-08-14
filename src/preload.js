@@ -32,5 +32,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   resetPreferences: () => ipcRenderer.invoke('reset-preferences'),
   exportSettings: () => ipcRenderer.invoke('export-settings'),
   importSettings: () => ipcRenderer.invoke('import-settings'),
-  showPrivacyPolicy: () => ipcRenderer.invoke('show-privacy-policy')
+  showPrivacyPolicy: () => ipcRenderer.invoke('show-privacy-policy'),
+  
+  // Telemetry handler
+  trackEvent: (eventName, properties) => ipcRenderer.invoke('track-event', eventName, properties)
 });

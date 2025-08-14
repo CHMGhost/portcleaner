@@ -1058,6 +1058,17 @@ ipcMain.handle('get-all-ports', async (event) => {
   }
 });
 
+// Track events from renderer
+ipcMain.handle('track-event', async (event, eventName, properties = {}) => {
+  try {
+    telemetry.trackEvent(eventName, properties);
+    return { success: true };
+  } catch (error) {
+    console.error('Error tracking event:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 // System requirement checks
 ipcMain.handle('check-system-requirements', async () => {
   const { exec } = require('child_process');

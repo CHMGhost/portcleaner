@@ -101,6 +101,12 @@ window.addEventListener('DOMContentLoaded', () => {
         setupSystemThemeListener(element.value);
       }
       
+      // Handle immediate preference changes that need special handling
+      if (element.id === 'compactMode' || element.id === 'showPortIcons') {
+        // Trigger immediate preference update via IPC
+        console.log(`Preference ${element.id} changed to:`, element.type === 'checkbox' ? element.checked : element.value);
+      }
+      
       window.electronAPI.savePreferences(prefs);
     });
   });

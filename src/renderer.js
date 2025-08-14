@@ -777,6 +777,109 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentSort = { column: 'port', direction: 'asc' };
   let favoritePorts = JSON.parse(localStorage.getItem('favoritePorts') || '[]');
   
+  // Advanced preferences state
+  let currentDisplayedPorts = 0;
+  let maxPortsToDisplay = 1000;
+  let showLoadMoreButton = false;
+  
+  // Debug logger utility
+  window.debugLogger = {
+    enabled: false,
+    setEnabled(enabled) {
+      this.enabled = enabled;
+      if (enabled) {
+        console.log('🐛 Debug mode enabled');
+        this.showDebugPanel();
+      } else {
+        this.hideDebugPanel();
+      }
+    },
+    log(category, message, data = null) {
+      if (!this.enabled) return;
+      const timestamp = new Date().toISOString();
+      const logEntry = `[${timestamp}] [${category.toUpperCase()}] ${message}`;
+      console.log(logEntry, data || '');
+      this.addToDebugLog(logEntry, data);
+    },
+    showDebugPanel() {
+      let panel = document.getElementById('debugPanel');
+      if (!panel) {
+        panel = document.createElement('div');
+        panel.id = 'debugPanel';
+        panel.innerHTML = `
+          <div style="position: fixed; top: 10px; right: 10px; width: 300px; max-height: 400px; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; font-family: monospace; font-size: 11px; z-index: 10000; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+            <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 8px; font-weight: bold; color: var(--text-primary);">
+              🐛 Debug Panel
+              <button onclick="document.getElementById('debugPanel').style.display='none'" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 0; margin-left: auto;">✕</button>
+            </div>
+            <div id="debugStats" style="margin-bottom: 8px; padding: 8px; background: var(--bg-primary); border-radius: 4px; color: var(--text-primary);"></div>
+            <div id="debugLog" style="max-height: 250px; overflow-y: auto; color: var(--text-secondary); line-height: 1.2;"></div>
+          </div>
+        `;
+        document.body.appendChild(panel);
+      }
+      panel.style.display = 'block';
+      this.updateDebugStats();
+    },
+    hideDebugPanel() {
+      const panel = document.getElementById('debugPanel');
+      if (panel) panel.style.display = 'none';
+      
+      // Clear the update timer
+      if (this.updateTimer) {
+        clearInterval(this.updateTimer);
+        this.updateTimer = null;
+      }
+    },
+    addToDebugLog(message, data) {
+      const logEl = document.getElementById('debugLog');
+      if (!logEl) return;
+      
+      const entry = document.createElement('div');
+      entry.style.marginBottom = '2px';
+      entry.style.fontSize = '10px';
+      entry.textContent = message;
+      if (data) {
+        entry.title = JSON.stringify(data, null, 2);
+      }
+      
+      logEl.appendChild(entry);
+      logEl.scrollTop = logEl.scrollHeight;
+      
+      // Keep only last 50 entries
+      while (logEl.children.length > 50) {
+        logEl.removeChild(logEl.firstChild);
+      }
+    },
+    updateDebugStats() {
+      const statsEl = document.getElementById('debugStats');
+      if (!statsEl) return;
+      
+      const memoryInfo = performance.memory ? {
+        used: Math.round(performance.memory.usedJSHeapSize / 1024 / 1024),
+        total: Math.round(performance.memory.totalJSHeapSize / 1024 / 1024),
+        limit: Math.round(performance.memory.jsHeapSizeLimit / 1024 / 1024)
+      } : null;
+      
+      const now = new Date();
+      statsEl.innerHTML = `
+        <div>Time: ${now.toLocaleTimeString()}</div>
+        <div>Ports: ${allPorts.length} total, ${filteredPorts.length} filtered, ${currentDisplayedPorts} displayed</div>
+        <div>Performance: ${performanceMonitor ? 'Active' : 'Inactive'}</div>
+        ${memoryInfo ? `<div>Memory: ${memoryInfo.used}MB / ${memoryInfo.total}MB (${memoryInfo.limit}MB limit)</div>` : ''}
+        <div>Worker: ${workerManager ? 'Active' : 'Inactive'}</div>
+        <div>Max Ports: ${maxPortsToDisplay} | Load More: ${showLoadMoreButton ? 'Yes' : 'No'}</div>
+      `;
+      
+      // Auto-update debug stats every 5 seconds when debug mode is enabled
+      if (this.enabled && !this.updateTimer) {
+        this.updateTimer = setInterval(() => {
+          this.updateDebugStats();
+        }, 5000);
+      }
+    }
+  };
+  
   // Search and filter elements
   const filterSection = document.getElementById('filterSection');
   const tableSection = document.getElementById('tableSection');
@@ -836,6 +939,48 @@ document.addEventListener('DOMContentLoaded', () => {
           const liveText = liveIndicator.querySelector('.live-text');
           if (liveText) liveText.textContent = 'Paused';
         }
+      }
+      
+      // Load advanced preferences
+      const advancedPrefs = {
+        maxPorts: window.preferencesConnector.get('maxPorts'),
+        enableVirtualization: window.preferencesConnector.get('enableVirtualization'),
+        showHidden: window.preferencesConnector.get('showHidden'),
+        debugMode: window.preferencesConnector.get('debugMode')
+      };
+      
+      // Apply max ports preference
+      if (advancedPrefs.maxPorts !== undefined) {
+        maxPortsToDisplay = parseInt(advancedPrefs.maxPorts) || 1000;
+        window.debugLogger.log('preferences', `Max ports set to: ${maxPortsToDisplay}`);
+      }
+      
+      // Apply debug mode preference
+      if (advancedPrefs.debugMode !== undefined) {
+        window.debugLogger.setEnabled(advancedPrefs.debugMode);
+        window.debugLogger.log('preferences', `Debug mode: ${advancedPrefs.debugMode ? 'enabled' : 'disabled'}`);
+        
+        // Track debug mode usage for telemetry
+        if (window.electronAPI?.trackEvent) {
+          window.electronAPI.trackEvent('debug_mode_toggle', {
+            enabled: advancedPrefs.debugMode
+          });
+        }
+      }
+      
+      // Track advanced preferences usage for telemetry
+      if (window.electronAPI?.trackEvent) {
+        window.electronAPI.trackEvent('advanced_preferences_loaded', {
+          maxPorts: advancedPrefs.maxPorts || 1000,
+          enableVirtualization: advancedPrefs.enableVirtualization !== false,
+          showHidden: advancedPrefs.showHidden || false,
+          debugMode: advancedPrefs.debugMode || false
+        });
+      }
+      
+      // Log other preferences for debugging
+      if (window.debugLogger.enabled) {
+        window.debugLogger.log('preferences', 'Advanced preferences loaded', advancedPrefs);
       }
     }).catch(err => {
       console.error('Failed to initialize preferences:', err);
@@ -2699,6 +2844,50 @@ Port Type: ${portType}`;
     // Start with all ports
     filteredPorts = [...allPorts];
     
+    // Apply hidden processes filter first
+    const showHidden = window.preferencesConnector?.get('showHidden') || false;
+    if (!showHidden) {
+      const HIDDEN_PROCESSES = [
+        'kernel_task', 'launchd', 'systemd', 'init', 'kthreadd',
+        'migration', 'rcu_', 'watchdog', 'ksoftirqd', 'systemd-',
+        'dbus', 'NetworkManager', 'wpa_supplicant', 'chronyd',
+        'bluetoothd', 'avahi-daemon', 'cups', 'sssd',
+        'WindowServer', 'loginwindow', 'csrutil', 'mds',
+        'mdworker', 'spotlightd', 'coreservicesd', 'finder',
+        'Safari Networking', 'com.apple', 'nsurlsessiond'
+      ];
+      
+      filteredPorts = filteredPorts.filter(port => {
+        const processName = (port.command || port.process || '').toLowerCase();
+        const isHidden = HIDDEN_PROCESSES.some(hiddenProc => 
+          processName.includes(hiddenProc.toLowerCase()) ||
+          processName.startsWith('.') ||
+          processName.includes('system') ||
+          (port.user && port.user.toLowerCase() === 'root' && port.port < 1024)
+        );
+        return !isHidden;
+      });
+      
+      window.debugLogger.log('filter', `Hidden processes filtered. Remaining: ${filteredPorts.length}/${allPorts.length}`);
+      
+      // Track hidden process filtering for telemetry
+      if (window.electronAPI?.trackEvent) {
+        window.electronAPI.trackEvent('hidden_processes_filtered', {
+          originalCount: allPorts.length,
+          filteredCount: filteredPorts.length,
+          hiddenCount: allPorts.length - filteredPorts.length
+        });
+      }
+    } else {
+      // Track when hidden processes are shown
+      if (window.electronAPI?.trackEvent) {
+        window.electronAPI.trackEvent('hidden_processes_shown', {
+          totalCount: allPorts.length,
+          showHiddenEnabled: true
+        });
+      }
+    }
+    
     // Apply search filter
     const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
     if (searchTerm) {
@@ -2713,6 +2902,8 @@ Port Type: ${portType}`;
                pid.includes(searchTerm) ||
                user.includes(searchTerm);
       });
+      
+      window.debugLogger.log('filter', `Search applied: "${searchTerm}". Results: ${filteredPorts.length}`);
     }
     
     // Apply multiple filters (can combine)
@@ -2937,6 +3128,36 @@ Port Type: ${portType}`;
     
     localStorage.setItem('favoritePorts', JSON.stringify(favoritePorts));
     applyFiltersAndSort();
+  };
+  
+  // Load more ports function
+  window.loadMorePorts = () => {
+    const currentMaxPorts = window.preferencesConnector?.get('maxPorts') || maxPortsToDisplay;
+    const newLimit = currentDisplayedPorts + currentMaxPorts;
+    const totalAvailable = filteredPorts.length;
+    
+    window.debugLogger.log('loadmore', `Loading more ports: ${currentDisplayedPorts} → ${Math.min(newLimit, totalAvailable)}`);
+    
+    // Track load more usage for telemetry
+    if (window.electronAPI?.trackEvent) {
+      window.electronAPI.trackEvent('load_more_ports', {
+        previouslyDisplayed: currentDisplayedPorts,
+        newlyDisplayed: Math.min(newLimit, totalAvailable) - currentDisplayedPorts,
+        totalAvailable: totalAvailable,
+        maxPortsLimit: currentMaxPorts
+      });
+    }
+    
+    // Get more ports to display
+    const morePortsToDisplay = filteredPorts.slice(0, Math.min(newLimit, totalAvailable));
+    
+    // Update display
+    displayAllPorts(morePortsToDisplay, false);
+    
+    // Update debug stats
+    if (window.debugLogger.enabled) {
+      window.debugLogger.updateDebugStats();
+    }
   };
   
   // ========================================
@@ -3169,17 +3390,46 @@ Port Type: ${portType}`;
       return;
     }
     
+    // Apply max ports limit
+    const totalPorts = ports.length;
+    let portsToDisplay = ports;
+    const currentMaxPorts = window.preferencesConnector?.get('maxPorts') || maxPortsToDisplay;
+    
+    if (totalPorts > currentMaxPorts) {
+      portsToDisplay = ports.slice(0, currentMaxPorts);
+      showLoadMoreButton = true;
+      window.debugLogger.log('display', `Limiting display to ${currentMaxPorts} of ${totalPorts} ports`);
+    } else {
+      showLoadMoreButton = false;
+    }
+    
+    currentDisplayedPorts = portsToDisplay.length;
+    
     // Hide empty state and show table
     hideEmptyState();
     if (!isAutoRefresh) {
       hideSkeletonLoading();
     }
     
-    // Check with performance monitor if virtual scrolling should be used
-    const shouldUseVirtual = performanceMonitor?.shouldUseVirtualScrolling(ports.length) || 
-                            ports.length > VIRTUAL_SCROLL_THRESHOLD;
+    // Check with performance monitor and user preference if virtual scrolling should be used
+    const enableVirtualization = window.preferencesConnector?.get('enableVirtualization') !== false; // Default to true
+    const shouldUseVirtual = enableVirtualization && 
+                            (performanceMonitor?.shouldUseVirtualScrolling(ports.length) || 
+                             ports.length > VIRTUAL_SCROLL_THRESHOLD);
     
-    // Use virtual scrolling for large datasets or poor performance
+    window.debugLogger.log('render', `Virtual scrolling: ${shouldUseVirtual ? 'enabled' : 'disabled'} (preference: ${enableVirtualization}, ports: ${ports.length})`);
+    
+    // Track virtual scrolling usage for telemetry
+    if (window.electronAPI?.trackEvent) {
+      window.electronAPI.trackEvent('virtual_scrolling_used', {
+        enabled: shouldUseVirtual,
+        userPreference: enableVirtualization,
+        portCount: ports.length,
+        threshold: VIRTUAL_SCROLL_THRESHOLD
+      });
+    }
+    
+    // Use virtual scrolling for large datasets or poor performance (if enabled)
     if (shouldUseVirtual) {
       performanceMonitor?.mark('displayPorts', 'virtualScrolling');
       initVirtualScrolling();
@@ -3189,7 +3439,7 @@ Port Type: ${portType}`;
     } else {
       // Regular rendering for small datasets
       performanceMonitor?.mark('displayPorts', 'regularRendering');
-      renderRegularTable(ports, isAutoRefresh);
+      renderRegularTable(portsToDisplay, isAutoRefresh);
     }
     
     // End performance timing
@@ -3476,6 +3726,35 @@ Port Type: ${portType}`;
     // Build the new table content  
     const newTableContent = buildPortRowsContent(ports);
     
+    // Add "Load more" button if needed
+    let loadMoreButtonHTML = '';
+    if (showLoadMoreButton) {
+      const remaining = filteredPorts.length - ports.length;
+      loadMoreButtonHTML = `
+        <tr class="load-more-row">
+          <td colspan="7" style="text-align: center; padding: 20px;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+              <div style="color: var(--text-secondary); font-size: 14px;">
+                Showing ${ports.length} of ${filteredPorts.length} ports
+              </div>
+              <button id="loadMoreButton" onclick="loadMorePorts()" style="
+                padding: 8px 16px;
+                background: var(--accent);
+                color: white;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: opacity 0.2s;
+              ">
+                Load ${Math.min(remaining, maxPortsToDisplay)} more ports
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }
+    
     // Preserve table height to prevent layout shift
     const currentHeight = allPortsList.offsetHeight;
     if (isAutoRefresh && currentHeight > 0) {
@@ -3485,7 +3764,7 @@ Port Type: ${portType}`;
     // Use requestAnimationFrame to ensure smooth update
     requestAnimationFrame(() => {
       // Update the table content
-      allPortsList.innerHTML = newTableContent;
+      allPortsList.innerHTML = newTableContent + loadMoreButtonHTML;
       
       // Reset min-height after content is rendered
       if (isAutoRefresh) {

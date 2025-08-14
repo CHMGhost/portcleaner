@@ -77,6 +77,27 @@ class PreferencesConnector {
       }
     }
     
+    // Apply advanced preferences
+    if (this.preferences.debugMode !== undefined && window.debugLogger) {
+      window.debugLogger.setEnabled(this.preferences.debugMode);
+    }
+    
+    // Apply max ports and virtualization preferences - trigger re-render if needed
+    if ((this.preferences.maxPorts !== undefined || this.preferences.enableVirtualization !== undefined) && 
+        window.refreshPorts && typeof window.refreshPorts === 'function') {
+      setTimeout(() => {
+        window.refreshPorts(false);
+      }, 50);
+    }
+    
+    // Apply show hidden processes preference - trigger re-render if needed
+    if (this.preferences.showHidden !== undefined && 
+        window.refreshPorts && typeof window.refreshPorts === 'function') {
+      setTimeout(() => {
+        window.refreshPorts(false);
+      }, 50);
+    }
+    
     // Notify callbacks
     this.callbacks.forEach(callback => callback(this.preferences));
   }

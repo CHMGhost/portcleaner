@@ -1,19 +1,34 @@
-// Apply theme based on system preference
-function applyTheme() {
-  const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+// Apply theme based on preferences
+function applyTheme(theme = 'system') {
+  let isDark;
+  if (theme === 'system') {
+    isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  } else {
+    isDark = theme === 'dark';
+  }
   document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
 }
 
-// Listen for theme changes
-if (window.matchMedia) {
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
+// Listen for system theme changes when theme is set to 'system'
+let systemThemeListener = null;
+function setupSystemThemeListener(currentTheme) {
+  // Remove existing listener
+  if (systemThemeListener && window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').removeEventListener('change', systemThemeListener);
+  }
+  
+  // Add new listener only if theme is 'system'
+  if (currentTheme === 'system' && window.matchMedia) {
+    systemThemeListener = () => applyTheme('system');
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', systemThemeListener);
+  }
 }
 
 // Wait for DOM to be fully loaded
 window.addEventListener('DOMContentLoaded', () => {
   console.log('Preferences window loaded');
   
-  // Apply initial theme
+  // Apply initial theme - will be updated when preferences load
   applyTheme();
   
   // Handle sidebar navigation
@@ -57,6 +72,12 @@ window.addEventListener('DOMContentLoaded', () => {
           }
         }
       });
+      
+      // Apply theme preference
+      if (prefs.theme) {
+        applyTheme(prefs.theme);
+        setupSystemThemeListener(prefs.theme);
+      }
     }
   });
   
@@ -73,6 +94,13 @@ window.addEventListener('DOMContentLoaded', () => {
           }
         }
       });
+      
+      // Apply theme immediately if it changed
+      if (element.id === 'theme') {
+        applyTheme(element.value);
+        setupSystemThemeListener(element.value);
+      }
+      
       window.electronAPI.savePreferences(prefs);
     });
   });

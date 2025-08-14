@@ -3,6 +3,7 @@ class PreferencesConnector {
   constructor() {
     this.preferences = {};
     this.callbacks = new Map();
+    this.systemThemeListener = null;
   }
 
   async initialize() {
@@ -17,6 +18,9 @@ class PreferencesConnector {
     
     // Apply initial preferences
     this.applyPreferences();
+    
+    // Set up system theme change listener
+    this.setupSystemThemeListener();
   }
 
   applyPreferences() {
@@ -76,6 +80,23 @@ class PreferencesConnector {
         lightIcon?.classList.remove('hidden');
         darkIcon?.classList.add('hidden');
       }
+      
+      // Update tooltip to show current mode
+      const themeLabel = theme === 'system' ? 'system' : (isDark ? 'dark' : 'light');
+      themeToggle.setAttribute('title', `Current theme: ${themeLabel} (Click to cycle themes)`);
+    }
+  }
+
+  setupSystemThemeListener() {
+    // Listen for system theme changes if theme is set to 'system'
+    if (window.matchMedia) {
+      this.systemThemeListener = (e) => {
+        if (this.preferences.theme === 'system') {
+          this.applyTheme('system');
+        }
+      };
+      
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', this.systemThemeListener);
     }
   }
 

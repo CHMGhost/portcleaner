@@ -751,7 +751,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // Error state buttons removed - app works without permission checks
   
   // Persistence Keys
-  const THEME_KEY = 'portcleaner-theme';
   const FILTER_TAB_KEY = 'portcleaner-filter-tab';
   
   // Auto-refresh Management
@@ -791,21 +790,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const filterButtons = document.querySelectorAll('.filter-chip');
   const sortableHeaders = document.querySelectorAll('.sortable');
   
-  // Load saved preferences
-  const savedTheme = localStorage.getItem(THEME_KEY);
-  const lightIcon = themeToggle?.querySelector('.theme-icon-light');
-  const darkIcon = themeToggle?.querySelector('.theme-icon-dark');
-  
-  if (savedTheme === 'dark') {
-    document.body.classList.add('dark-theme');
-    // Show moon icon for dark theme
-    lightIcon?.classList.add('hidden');
-    darkIcon?.classList.remove('hidden');
-  } else {
-    // Light theme is default - show sun icon
-    lightIcon?.classList.remove('hidden');
-    darkIcon?.classList.add('hidden');
-  }
+  // Theme management will be handled by preferences connector
+  // Remove localStorage theme handling - will be replaced with preferences
   
   // Initialize preferences connector
   let preferencesInitialized = false;
@@ -814,6 +800,11 @@ document.addEventListener('DOMContentLoaded', () => {
   if (window.preferencesConnector) {
     window.preferencesConnector.initialize().then(() => {
       preferencesInitialized = true;
+      
+      // Load theme settings from preferences
+      const theme = window.preferencesConnector.get('theme') || 'system';
+      window.preferencesConnector.applyTheme(theme);
+      updateThemeToggleIcon(theme);
       
       // Load auto-refresh settings from preferences
       const autoRefreshEnabled = window.preferencesConnector.get('autoRefreshEnabled');
@@ -1260,13 +1251,52 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
   
-  // Theme toggle handler with SVG icons
-  themeToggle?.addEventListener('click', () => {
-    const isDark = document.body.classList.toggle('dark-theme');
+  // Theme toggle handler - cycles through light -> dark -> system
+  async function toggleTheme() {
+    try {
+      // Get current theme preference
+      const currentTheme = window.preferencesConnector ? 
+        window.preferencesConnector.get('theme') : 'system';
+      
+      // Cycle through themes: light -> dark -> system -> light
+      let nextTheme;
+      switch (currentTheme) {
+        case 'light':
+          nextTheme = 'dark';
+          break;
+        case 'dark':
+          nextTheme = 'system';
+          break;
+        case 'system':
+        default:
+          nextTheme = 'light';
+          break;
+      }
+      
+      // Save new theme preference
+      if (window.preferencesConnector) {
+        await window.preferencesConnector.set('theme', nextTheme);
+        // Apply theme immediately
+        window.preferencesConnector.applyTheme(nextTheme);
+      } else {
+        // Fallback if preferences connector not ready
+        console.warn('Preferences connector not ready, cannot change theme');
+      }
+      
+      // Add transition effect
+      document.body.style.transition = 'all 0.3s ease';
+    } catch (error) {
+      console.error('Error toggling theme:', error);
+    }
+  }
+  
+  // Helper function to update theme toggle icon
+  function updateThemeToggleIcon(theme) {
+    const lightIcon = themeToggle?.querySelector('.theme-icon-light');
+    const darkIcon = themeToggle?.querySelector('.theme-icon-dark');
     
-    // Update SVG icons
-    const lightIcon = themeToggle.querySelector('.theme-icon-light');
-    const darkIcon = themeToggle.querySelector('.theme-icon-dark');
+    const isDark = theme === 'dark' || 
+                   (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
     
     if (isDark) {
       lightIcon?.classList.add('hidden');
@@ -1276,12 +1306,15 @@ document.addEventListener('DOMContentLoaded', () => {
       darkIcon?.classList.add('hidden');
     }
     
-    // Save preference
-    localStorage.setItem(THEME_KEY, isDark ? 'dark' : 'light');
-    
-    // Add a nice transition effect
-    document.body.style.transition = 'all 0.3s ease';
-  });
+    // Update tooltip to show current mode
+    if (themeToggle) {
+      const themeLabel = theme === 'system' ? 'system' : (isDark ? 'dark' : 'light');
+      themeToggle.setAttribute('title', `Current theme: ${themeLabel} (Click to cycle themes)`);
+    }
+  }
+  
+  // Theme toggle click handler
+  themeToggle?.addEventListener('click', toggleTheme);
   
   // Check single port with loading state (only if elements exist)
   if (checkBtn && portInput) {
@@ -4355,6 +4388,12 @@ Port Type: ${portType}`;
               startAutoRefresh();
             }
           }
+        }
+        
+        // Handle theme preference updates
+        if (prefs.theme !== undefined && window.preferencesConnector) {
+          window.preferencesConnector.applyTheme(prefs.theme);
+          updateThemeToggleIcon(prefs.theme);
         }
       });
     }

@@ -28,17 +28,17 @@ class PreferencesConnector {
     // Apply auto-refresh settings
     if (this.preferences.autoRefreshEnabled !== undefined) {
       const autoRefreshToggle = document.getElementById('autoRefreshToggle');
-      if (autoRefreshToggle) {
+      if (autoRefreshToggle && autoRefreshToggle.checked !== this.preferences.autoRefreshEnabled) {
         autoRefreshToggle.checked = this.preferences.autoRefreshEnabled;
-        autoRefreshToggle.dispatchEvent(new Event('change'));
+        // Don't dispatch change event here to avoid recursion - let renderer handle it directly
       }
     }
     
     if (this.preferences.refreshInterval !== undefined) {
       const refreshIntervalSelect = document.getElementById('refreshInterval');
-      if (refreshIntervalSelect) {
+      if (refreshIntervalSelect && refreshIntervalSelect.value !== this.preferences.refreshInterval) {
         refreshIntervalSelect.value = this.preferences.refreshInterval;
-        refreshIntervalSelect.dispatchEvent(new Event('change'));
+        // Don't dispatch change event here to avoid recursion - let renderer handle it directly
       }
     }
     

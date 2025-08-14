@@ -752,9 +752,7 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Persistence Keys
   const THEME_KEY = 'portcleaner-theme';
-  const REFRESH_INTERVAL_KEY = 'portcleaner-refresh-interval';
   const FILTER_TAB_KEY = 'portcleaner-filter-tab';
-  const AUTO_REFRESH_KEY = 'portcleaner-auto-refresh';
   
   // Auto-refresh Management
   let autoRefreshInterval = null;
@@ -829,34 +827,32 @@ document.addEventListener('DOMContentLoaded', () => {
         refreshIntervalSelect.value = refreshInterval;
       }
       
-      // Start auto-refresh if enabled
+      // Start auto-refresh if enabled and update UI indicators
       if (autoRefreshToggle && autoRefreshToggle.checked) {
         startAutoRefresh();
+        updateAutoRefreshStatus(true);
+        const liveIndicator = document.getElementById('liveIndicator');
+        if (liveIndicator) {
+          liveIndicator.classList.remove('paused');
+          const liveText = liveIndicator.querySelector('.live-text');
+          if (liveText) liveText.textContent = 'Live';
+        }
+      } else {
+        updateAutoRefreshStatus(false);
+        const liveIndicator = document.getElementById('liveIndicator');
+        if (liveIndicator) {
+          liveIndicator.classList.add('paused');
+          const liveText = liveIndicator.querySelector('.live-text');
+          if (liveText) liveText.textContent = 'Paused';
+        }
       }
     }).catch(err => {
       console.error('Failed to initialize preferences:', err);
-      // Fallback to localStorage for auto-refresh settings
-      const savedRefreshInterval = localStorage.getItem(REFRESH_INTERVAL_KEY);
-      if (savedRefreshInterval && refreshIntervalSelect) {
-        refreshIntervalSelect.value = savedRefreshInterval;
-      }
-      
-      const savedAutoRefresh = localStorage.getItem(AUTO_REFRESH_KEY);
-      if (autoRefreshToggle) {
-        autoRefreshToggle.checked = savedAutoRefresh !== 'false';
-      }
+      preferencesInitialized = false;
     });
   } else {
-    // Fallback to localStorage if preferences connector not available
-    const savedRefreshInterval = localStorage.getItem(REFRESH_INTERVAL_KEY);
-    if (savedRefreshInterval && refreshIntervalSelect) {
-      refreshIntervalSelect.value = savedRefreshInterval;
-    }
-    
-    const savedAutoRefresh = localStorage.getItem(AUTO_REFRESH_KEY);
-    if (autoRefreshToggle) {
-      autoRefreshToggle.checked = savedAutoRefresh !== 'false';
-    }
+    console.warn('Preferences connector not available');
+    preferencesInitialized = false;
   }
   
   // Apply saved filters
@@ -2227,11 +2223,11 @@ Port Type: ${portType}`;
   
   // Auto-refresh toggle handler with live indicator
   autoRefreshToggle.addEventListener('change', async () => {
-    // Save to preferences if available, otherwise use localStorage
+    // Save to preferences store
     if (preferencesInitialized && window.preferencesConnector) {
       await window.preferencesConnector.set('autoRefreshEnabled', autoRefreshToggle.checked);
     } else {
-      localStorage.setItem(AUTO_REFRESH_KEY, autoRefreshToggle.checked);
+      console.warn('Preferences not available, auto-refresh setting not saved');
     }
     
     const liveIndicator = document.getElementById('liveIndicator');
@@ -2257,11 +2253,11 @@ Port Type: ${portType}`;
   
   // Refresh interval change handler
   refreshIntervalSelect.addEventListener('change', async () => {
-    // Save to preferences if available, otherwise use localStorage
+    // Save to preferences store
     if (preferencesInitialized && window.preferencesConnector) {
       await window.preferencesConnector.set('refreshInterval', refreshIntervalSelect.value);
     } else {
-      localStorage.setItem(REFRESH_INTERVAL_KEY, refreshIntervalSelect.value);
+      console.warn('Preferences not available, refresh interval setting not saved');
     }
     
     if (autoRefreshToggle.checked) {
@@ -4354,7 +4350,8 @@ Port Type: ${portType}`;
             refreshIntervalSelect.value = prefs.refreshInterval;
             
             // Restart auto-refresh with new interval if enabled
-            if (autoRefreshToggle && autoRefreshToggle.checked) {
+            const currentAutoRefreshToggle = document.getElementById('autoRefreshToggle');
+            if (currentAutoRefreshToggle && currentAutoRefreshToggle.checked) {
               startAutoRefresh();
             }
           }

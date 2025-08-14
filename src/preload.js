@@ -6,7 +6,11 @@ contextBridge.exposeInMainWorld('api', {
   getPortInfo: (port) => ipcRenderer.invoke('get-port-info', port),
   killProcess: (pid, processName, port, forceKill = false) => ipcRenderer.invoke('kill-process', pid, processName, port, forceKill),
   getAllPorts: () => ipcRenderer.invoke('get-all-ports'),
-  checkSystemRequirements: () => ipcRenderer.invoke('check-system-requirements')
+  checkSystemRequirements: () => ipcRenderer.invoke('check-system-requirements'),
+  
+  // Notification support
+  showNotification: (title, body, type = 'info') => ipcRenderer.invoke('show-notification', title, body, type),
+  isWindowFocused: () => ipcRenderer.invoke('is-window-focused')
 });
 
 // Keep the electron version API for backward compatibility

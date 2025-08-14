@@ -976,6 +976,239 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   
   // ========================================
+  // BEHAVIOR PREFERENCES - CONFIRMATION DIALOGS
+  // ========================================
+  
+  // Enhanced confirmation dialog for stopping processes
+  async function showStopConfirmationDialog(processName, pid, port) {
+    return new Promise((resolve) => {
+      // Create modal overlay
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
+      overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        backdrop-filter: blur(2px);
+      `;
+      
+      // Create modal dialog
+      const modal = document.createElement('div');
+      modal.className = 'confirmation-modal';
+      modal.style.cssText = `
+        background: var(--bg-secondary, #fff);
+        border-radius: 12px;
+        padding: 24px;
+        max-width: 480px;
+        width: 90%;
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+        color: var(--text-primary, #333);
+        border: 1px solid var(--border-color, #e0e0e0);
+      `;
+      
+      modal.innerHTML = `
+        <div style="display: flex; align-items: flex-start; gap: 16px; margin-bottom: 20px;">
+          <div style="flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%; background: #ff6b35; display: flex; align-items: center; justify-content: center;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+              <path d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </div>
+          <div style="flex: 1;">
+            <h3 style="margin: 0 0 8px 0; font-size: 18px; font-weight: 600;">Stop Process</h3>
+            <p style="margin: 0 0 12px 0; color: var(--text-secondary, #666); line-height: 1.4;">
+              Are you sure you want to stop <strong>${processName}</strong>?
+            </p>
+            <div style="background: var(--bg-primary, #f5f5f5); padding: 12px; border-radius: 6px; font-size: 14px; color: var(--text-secondary, #666);">
+              <div><strong>Process:</strong> ${processName}</div>
+              <div><strong>PID:</strong> ${pid}</div>
+              <div><strong>Port:</strong> ${port}</div>
+            </div>
+          </div>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px;">
+            <input type="checkbox" id="dontAskAgain" style="margin: 0;">
+            Don't ask again (can be changed in Preferences)
+          </label>
+        </div>
+        
+        <div style="display: flex; gap: 12px; justify-content: flex-end;">
+          <button id="cancelBtn" style="padding: 8px 16px; border: 1px solid var(--border-color, #ccc); background: transparent; border-radius: 6px; cursor: pointer; color: var(--text-primary, #333);">
+            Cancel
+          </button>
+          <button id="confirmBtn" style="padding: 8px 16px; background: #ff6b35; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+            Stop Process
+          </button>
+        </div>
+      `;
+      
+      overlay.appendChild(modal);
+      document.body.appendChild(overlay);
+      
+      // Focus the confirm button
+      const confirmBtn = modal.querySelector('#confirmBtn');
+      const cancelBtn = modal.querySelector('#cancelBtn');
+      const dontAskAgain = modal.querySelector('#dontAskAgain');
+      
+      confirmBtn.focus();
+      
+      // Handle button clicks
+      const cleanup = () => {
+        document.body.removeChild(overlay);
+      };
+      
+      confirmBtn.addEventListener('click', async () => {
+        if (dontAskAgain.checked) {
+          // Update preference to disable confirmation
+          if (window.preferencesConnector) {
+            await window.preferencesConnector.set('confirmStop', false);
+            showToast('Confirmation dialogs disabled. You can re-enable them in Preferences.', 'info');
+          }
+        }
+        cleanup();
+        resolve(true);
+      });
+      
+      cancelBtn.addEventListener('click', () => {
+        cleanup();
+        resolve(false);
+      });
+      
+      // Handle ESC key
+      const handleKeyDown = (e) => {
+        if (e.key === 'Escape') {
+          cleanup();
+          resolve(false);
+          document.removeEventListener('keydown', handleKeyDown);
+        }
+      };
+      document.addEventListener('keydown', handleKeyDown);
+      
+      // Handle overlay click
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+          cleanup();
+          resolve(false);
+        }
+      });
+    });
+  }
+  
+  // ========================================
+  // BEHAVIOR PREFERENCES - NOTIFICATIONS & SOUNDS
+  // ========================================
+  
+  // Show system notification (respects showNotifications preference)
+  async function showSystemNotification(title, body, type = 'info') {
+    try {
+      // Check if notifications are enabled
+      const showNotifications = window.preferencesConnector?.get('showNotifications') !== false;
+      if (!showNotifications) {
+        return { success: false, reason: 'disabled_by_user' };
+      }
+      
+      // Only show notifications when window is not focused
+      const isWindowFocused = await window.api.isWindowFocused();
+      if (isWindowFocused) {
+        return { success: false, reason: 'window_focused' };
+      }
+      
+      // Call main process to show notification
+      const result = await window.api.showNotification(title, body, type);
+      
+      // Play sound alert if enabled
+      if (result.success) {
+        playSound(type);
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Error showing system notification:', error);
+      return { success: false, error: error.message };
+    }
+  }
+  
+  // Play sound alerts (respects soundAlerts preference)
+  function playSound(type = 'info') {
+    try {
+      // Check if sound alerts are enabled
+      const soundAlerts = window.preferencesConnector?.get('soundAlerts') === true;
+      if (!soundAlerts) {
+        return;
+      }
+      
+      // Create AudioContext if it doesn't exist
+      if (typeof window.audioContext === 'undefined') {
+        window.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      
+      const ctx = window.audioContext;
+      
+      // Resume context if suspended (required by browsers)
+      if (ctx.state === 'suspended') {
+        ctx.resume();
+      }
+      
+      // Sound configurations for different event types
+      const soundConfigs = {
+        success: { frequency: 800, duration: 0.15, volume: 0.3 },
+        error: { frequency: 400, duration: 0.3, volume: 0.4 },
+        warning: { frequency: 600, duration: 0.2, volume: 0.35 },
+        info: { frequency: 700, duration: 0.1, volume: 0.25 }
+      };
+      
+      const config = soundConfigs[type] || soundConfigs.info;
+      
+      // Create oscillator and gain nodes
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      
+      // Configure sound
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(config.frequency, ctx.currentTime);
+      
+      // Create a gentle fade in/out envelope
+      gainNode.gain.setValueAtTime(0, ctx.currentTime);
+      gainNode.gain.linearRampToValueAtTime(config.volume, ctx.currentTime + 0.01);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + config.duration);
+      
+      // Connect nodes
+      oscillator.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      
+      // Play sound
+      oscillator.start(ctx.currentTime);
+      oscillator.stop(ctx.currentTime + config.duration);
+      
+    } catch (error) {
+      console.error('Error playing sound:', error);
+      // Fail silently - sound is not critical
+    }
+  }
+  
+  // Combined notification function (shows toast + system notification + sound)
+  async function showNotificationWithToast(message, type = 'info', title = null, duration = 5000) {
+    // Always show toast for immediate feedback
+    showToast(message, type, title, duration);
+    
+    // Show system notification only when window is not focused
+    if (title) {
+      await showSystemNotification(title, message, type);
+    } else {
+      // Use message as title if no title provided
+      await showSystemNotification('PortCleaner', message, type);
+    }
+  }
+  
+  // ========================================
   // TOAST NOTIFICATION SYSTEM WITH SMART POSITIONING
   // ========================================
   const MAX_TOASTS = 3;
@@ -1451,6 +1684,15 @@ document.addEventListener('DOMContentLoaded', () => {
           if (autoRefreshToggle.checked && !autoRefreshInterval) {
             startAutoRefresh();
           }
+          
+          // Show success notification for large port scans (when window is not focused)
+          if (!isAutoRefresh && result.data.length > 10) {
+            showSystemNotification(
+              'Port Scan Complete',
+              `Found ${result.data.length} active ports`,
+              'success'
+            );
+          }
         };
         
         // Process ports using worker if available
@@ -1477,6 +1719,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const errorMsg = result.error || 'Failed to fetch port information';
         showErrorBanner('Unable to fetch ports', errorMsg, () => refreshPorts(false));
         showToast(errorMsg, 'error', 'Port Fetch Failed');
+        
+        // Show system notification for scan errors
+        await showSystemNotification(
+          'Port Scan Failed',
+          `Unable to scan ports: ${errorMsg}`,
+          'error'
+        );
+        
         showEmptyState('error');
         portsVisible = false;
       }
@@ -1484,6 +1734,14 @@ document.addEventListener('DOMContentLoaded', () => {
       // Show error with retry option
       showErrorBanner('Unexpected error', error.message, () => refreshPorts(false));
       showToast(`Unexpected error: ${error.message}`, 'error');
+      
+      // Show system notification for unexpected errors
+      await showSystemNotification(
+        'Unexpected Error',
+        `Port scanning failed: ${error.message}`,
+        'error'
+      );
+      
       showEmptyState('error');
       portsVisible = false;
     } finally {
@@ -1720,23 +1978,47 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Show protection tooltip
   function showProtectionTooltip(event, processName) {
+    // Check if protected process warnings are enabled
+    const warnProtected = window.preferencesConnector?.get('warnProtected') !== false; // Default to true
+    if (!warnProtected) {
+      // Show a simple message if warnings are disabled
+      showToast('Process protection warnings are disabled in Preferences', 'info');
+      return;
+    }
+    
     const reason = getProtectionReason(processName);
     const tooltip = protectionTooltip;
     
-    // Update content
-    tooltip.querySelector('.tooltip-message').textContent = reason.message;
+    // Enhanced tooltip content with better styling
+    const tooltipContent = tooltip.querySelector('.tooltip-content');
+    tooltipContent.innerHTML = `
+      <div class="protection-header">
+        <div class="protection-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            <path d="M8 11l2 2 4-4"></path>
+          </svg>
+        </div>
+        <div class="protection-title">
+          <h4>Protected Process</h4>
+          <span class="process-name">${processName}</span>
+        </div>
+        <button class="tooltip-close" aria-label="Close tooltip">×</button>
+      </div>
+      <div class="protection-body">
+        <p class="tooltip-message">${reason.message}</p>
+        <div class="tooltip-reasons">
+          <strong>Why this process is protected:</strong>
+          <ul>${reason.reasons.map(r => `<li>${r}</li>`).join('')}</ul>
+        </div>
+        <div class="protection-footer">
+          <small>You can still force stop this process through the context menu, but use caution.</small>
+        </div>
+      </div>
+    `;
     
-    const reasonsList = reason.reasons.map(r => `<li>${r}</li>`).join('');
-    tooltip.querySelector('.tooltip-reasons').innerHTML = `<ul>${reasonsList}</ul>`;
-    
-    // Add close button if not present
-    if (!tooltip.querySelector('.tooltip-close')) {
-      const closeBtn = document.createElement('button');
-      closeBtn.className = 'tooltip-close';
-      closeBtn.innerHTML = '×';
-      closeBtn.setAttribute('aria-label', 'Close tooltip');
-      tooltip.querySelector('.tooltip-content').appendChild(closeBtn);
-    }
+    // Enhanced styling for the tooltip
+    tooltip.className = 'protection-tooltip enhanced-warning';
     
     // Position tooltip
     const rect = event.target.getBoundingClientRect();
@@ -2019,10 +2301,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const processName = stopBtn.dataset.process;
     const port = parseInt(stopBtn.dataset.port);
     
-    // Show confirmation dialog
-    const message = `Stop process "${processName}" (PID: ${pid}) on port ${port}?\n\nThis will gracefully stop the process.`;
+    // Check confirmStop preference
+    const confirmStop = window.preferencesConnector?.get('confirmStop') !== false; // Default to true
     
-    if (confirm(message)) {
+    let shouldProceed = true;
+    if (confirmStop) {
+      shouldProceed = await showStopConfirmationDialog(processName, pid, port);
+    }
+    
+    if (shouldProceed) {
       // Visual feedback
       stopBtn.disabled = true;
       stopBtn.classList.add('stopping');
@@ -2972,6 +3259,34 @@ Port Type: ${portType}`;
       6379: 'Redis'
     };
     
+    // Extended service port mapping with icons
+    const SERVICE_ICONS = {
+      22: { name: 'SSH', icon: '🔐', color: '#ff6b6b' },
+      23: { name: 'Telnet', icon: '💻', color: '#4ecdc4' },
+      25: { name: 'SMTP', icon: '📧', color: '#45b7d1' },
+      53: { name: 'DNS', icon: '🌐', color: '#96ceb4' },
+      80: { name: 'HTTP', icon: '🌍', color: '#45b7d1' },
+      110: { name: 'POP3', icon: '📬', color: '#feca57' },
+      143: { name: 'IMAP', icon: '📫', color: '#ff9ff3' },
+      443: { name: 'HTTPS', icon: '🔒', color: '#5f27cd' },
+      993: { name: 'IMAPS', icon: '🔐', color: '#ff9ff3' },
+      995: { name: 'POP3S', icon: '🔒', color: '#feca57' },
+      1433: { name: 'SQL Server', icon: '🗄️', color: '#fd79a8' },
+      3000: { name: 'Dev Server', icon: '⚡', color: '#fdcb6e' },
+      3306: { name: 'MySQL', icon: '🐬', color: '#fd79a8' },
+      4000: { name: 'Dev Server', icon: '🚀', color: '#6c5ce7' },
+      5000: { name: 'Flask/Dev', icon: '🐍', color: '#00b894' },
+      5432: { name: 'PostgreSQL', icon: '🐘', color: '#0984e3' },
+      5984: { name: 'CouchDB', icon: '🛋️', color: '#fd79a8' },
+      6379: { name: 'Redis', icon: '💎', color: '#e17055' },
+      8000: { name: 'Web Server', icon: '🌐', color: '#74b9ff' },
+      8080: { name: 'HTTP Alt', icon: '🌏', color: '#55a3ff' },
+      8443: { name: 'HTTPS Alt', icon: '🔐', color: '#a29bfe' },
+      9000: { name: 'Web Server', icon: '🌎', color: '#fd79a8' },
+      9200: { name: 'Elasticsearch', icon: '🔍', color: '#fdcb6e' },
+      27017: { name: 'MongoDB', icon: '🍃', color: '#00b894' }
+    };
+    
     const PROTECTED_PROCESSES = [
       'kernel_task', 'launchd', 'systemd', 'init',
       'WindowServer', 'loginwindow', 'finder',
@@ -2991,6 +3306,10 @@ Port Type: ${portType}`;
     
     const isFavorite = favoritePorts.includes(port.port);
     
+    // Get service info for port icons
+    const serviceInfo = SERVICE_ICONS[port.port];
+    const showPortIcons = window.preferencesConnector?.get('showPortIcons') !== false; // Default to true
+    
     // Apply highlighting with cache
     const highlightedPort = searchTerm ? highlightText(port.port.toString(), searchTerm, cache) : port.port;
     const highlightedProcess = searchTerm ? highlightText(processName, searchTerm, cache) : processName;
@@ -3008,6 +3327,7 @@ Port Type: ${portType}`;
               <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
             </svg>
           </button>
+          ${showPortIcons && serviceInfo ? `<span class="service-icon" style="color: ${serviceInfo.color};" title="${serviceInfo.name} Service">${serviceInfo.icon}</span>` : ''}
           <span class="port-number">${highlightedPort}</span>
           ${isCritical ? `<span class="critical-badge" title="${CRITICAL_PORTS[port.port]} Service">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
@@ -3217,10 +3537,15 @@ Port Type: ${portType}`;
         // Add to kill history
         addToKillHistory(processSnapshot);
         
-        // Show success with undo option
-        showToastWithUndo(
-          `Process ${processName} (PID: ${pid}) terminated`,
-          processSnapshot
+        // Show success notification with undo option
+        const successMessage = `Process ${processName} (PID: ${pid}) terminated`;
+        showToastWithUndo(successMessage, processSnapshot);
+        
+        // Show system notification and play sound
+        await showSystemNotification(
+          'Process Stopped',
+          `${processName} on port ${port} has been stopped`,
+          'success'
         );
         
         // Refresh the ports list after a short delay
@@ -3233,14 +3558,35 @@ Port Type: ${portType}`;
           return;
         }
         if (result.error === 'Process is protected') {
-          showToast('This process is protected and cannot be killed', 'error', 'Protected Process');
+          const errorMessage = 'This process is protected and cannot be killed';
+          showToast(errorMessage, 'error', 'Protected Process');
+          // Show system notification for protected process error
+          await showSystemNotification(
+            'Protected Process',
+            `${processName} is protected and cannot be stopped`,
+            'warning'
+          );
         } else {
+          const errorMessage = `Failed to stop process: ${result.error}`;
           showResult(`✗ ${result.error}`, 'error');
+          // Show system notification for general errors
+          await showSystemNotification(
+            'Process Stop Failed',
+            errorMessage,
+            'error'
+          );
         }
       }
     } catch (error) {
       console.error('Error in killProcess:', error);
-      showResult(`✗ Error: ${error.message}`, 'error');
+      const errorMessage = `Error: ${error.message}`;
+      showResult(`✗ ${errorMessage}`, 'error');
+      // Show system notification for unexpected errors
+      await showSystemNotification(
+        'Unexpected Error',
+        `Failed to stop process: ${error.message}`,
+        'error'
+      );
     }
   }
   

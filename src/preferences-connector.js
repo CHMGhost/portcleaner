@@ -53,6 +53,30 @@ class PreferencesConnector {
       document.body.classList.remove('compact-mode');
     }
     
+    // Apply showPortIcons preference
+    // Note: This will trigger a table re-render when preferences change
+    if (this.preferences.showPortIcons !== undefined) {
+      // Trigger table refresh to show/hide icons
+      if (window.refreshPorts && typeof window.refreshPorts === 'function') {
+        // Small delay to ensure preference is applied
+        setTimeout(() => {
+          window.refreshPorts(false);
+        }, 50);
+      }
+    }
+    
+    // Apply behavior preferences
+    if (this.preferences.soundAlerts !== undefined) {
+      // Initialize audio context if sound alerts are enabled and not already initialized
+      if (this.preferences.soundAlerts && typeof window.audioContext === 'undefined') {
+        try {
+          window.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        } catch (error) {
+          console.warn('Could not initialize audio context:', error);
+        }
+      }
+    }
+    
     // Notify callbacks
     this.callbacks.forEach(callback => callback(this.preferences));
   }

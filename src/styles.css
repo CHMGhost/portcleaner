@@ -1115,6 +1115,150 @@ body.dark-theme .protected-process:hover {
   background: rgba(239, 68, 68, 0.06);
 }
 
+/* Enhanced protection warning tooltip */
+.protection-tooltip.enhanced-warning {
+  background: var(--bg-secondary, #fff);
+  border: 2px solid #f59e0b;
+  border-radius: 12px;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(245, 158, 11, 0.1);
+  max-width: 400px;
+  min-width: 300px;
+  z-index: 10001;
+}
+
+.protection-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 16px 12px 16px;
+  border-bottom: 1px solid var(--border-color, #e0e0e0);
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.05) 0%, rgba(245, 158, 11, 0.02) 100%);
+  border-radius: 10px 10px 0 0;
+}
+
+.protection-icon {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  background: #f59e0b;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.protection-title {
+  flex: 1;
+}
+
+.protection-title h4 {
+  margin: 0 0 4px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary, #333);
+}
+
+.protection-title .process-name {
+  font-size: 14px;
+  color: var(--text-secondary, #666);
+  font-family: monospace;
+  background: var(--bg-primary, #f5f5f5);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.protection-body {
+  padding: 16px;
+}
+
+.protection-body .tooltip-message {
+  margin: 0 0 12px 0;
+  font-weight: 500;
+  color: var(--text-primary, #333);
+}
+
+.protection-body .tooltip-reasons {
+  margin-bottom: 16px;
+}
+
+.protection-body .tooltip-reasons strong {
+  color: var(--text-primary, #333);
+  font-size: 14px;
+}
+
+.protection-body .tooltip-reasons ul {
+  margin: 8px 0 0 0;
+  padding-left: 20px;
+}
+
+.protection-body .tooltip-reasons li {
+  margin: 4px 0;
+  color: var(--text-secondary, #666);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.protection-footer {
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color, #e0e0e0);
+}
+
+.protection-footer small {
+  color: var(--text-muted, #999);
+  font-style: italic;
+}
+
+.tooltip-close {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  color: var(--text-secondary, #666);
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.tooltip-close:hover {
+  background: var(--bg-primary, #f5f5f5);
+  color: var(--text-primary, #333);
+}
+
+/* Dark theme support for enhanced protection warning */
+body.dark-theme .protection-tooltip.enhanced-warning {
+  background: var(--bg-secondary, #2d2d2d);
+  border-color: #d97706;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(217, 119, 6, 0.2);
+}
+
+body.dark-theme .protection-header {
+  background: linear-gradient(135deg, rgba(217, 119, 6, 0.1) 0%, rgba(217, 119, 6, 0.05) 100%);
+  border-bottom-color: var(--border-color, #404040);
+}
+
+body.dark-theme .protection-icon {
+  background: #d97706;
+}
+
+body.dark-theme .protection-title .process-name {
+  background: var(--bg-primary, #1a1a1a);
+  color: var(--text-secondary, #a0a0a0);
+}
+
+body.dark-theme .protection-footer {
+  border-top-color: var(--border-color, #404040);
+}
+
+body.dark-theme .tooltip-close:hover {
+  background: var(--bg-primary, #1a1a1a);
+}
+
 /* Protected kill button - old disabled style */
 .stop-btn.protected {
   background: var(--bg-tertiary);
@@ -5100,6 +5244,92 @@ tr:focus-visible {
 
 .skip-to-main:focus {
   top: 0;
+}
+
+/* Service Icon Styles */
+.service-icon {
+  display: inline-block;
+  font-size: 14px;
+  margin-right: 6px;
+  vertical-align: middle;
+  user-select: none;
+  opacity: 0.9;
+  transition: opacity 0.2s ease;
+}
+
+.service-icon:hover {
+  opacity: 1;
+}
+
+/* Compact Mode Styles */
+body.compact-mode .ports-table {
+  font-size: 13px;
+}
+
+body.compact-mode .ports-table td,
+body.compact-mode .ports-table th {
+  padding: 4px 8px;
+  line-height: 1.3;
+}
+
+body.compact-mode .ports-table tbody tr {
+  height: auto;
+  min-height: 28px;
+}
+
+body.compact-mode .favorite-star {
+  width: 12px;
+  height: 12px;
+  padding: 2px;
+  margin-right: 4px;
+}
+
+body.compact-mode .favorite-star svg {
+  width: 12px;
+  height: 12px;
+}
+
+body.compact-mode .service-icon {
+  font-size: 12px;
+  margin-right: 4px;
+}
+
+body.compact-mode .critical-badge,
+body.compact-mode .protected-badge {
+  padding: 1px 4px;
+  font-size: 10px;
+}
+
+body.compact-mode .critical-badge svg,
+body.compact-mode .protected-badge svg {
+  width: 10px;
+  height: 10px;
+}
+
+body.compact-mode .stop-btn,
+body.compact-mode .action-menu-btn {
+  padding: 2px 6px;
+  font-size: 11px;
+  min-height: 20px;
+}
+
+body.compact-mode .stop-btn svg,
+body.compact-mode .action-menu-btn svg {
+  width: 12px;
+  height: 12px;
+}
+
+body.compact-mode .cpu-icon {
+  width: 10px;
+  height: 10px;
+}
+
+body.compact-mode .port-number {
+  font-weight: 600;
+}
+
+body.compact-mode .process-name {
+  font-size: 12px;
 }
 
 /* High contrast mode support */

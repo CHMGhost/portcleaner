@@ -1287,3 +1287,53 @@ ipcMain.handle('import-settings', async () => {
   
   return { success: false, canceled: true };
 });
+
+// Notification handlers
+ipcMain.handle('show-notification', async (event, title, body, type = 'info') => {
+  try {
+    // Check if notifications are enabled in preferences
+    const prefs = store.get('preferences', {});
+    if (prefs.showNotifications === false) {
+      return { success: false, reason: 'notifications_disabled' };
+    }
+    
+    // Check if Electron notifications are supported
+    const { Notification } = require('electron');
+    if (!Notification.isSupported()) {
+      return { success: false, reason: 'not_supported' };
+    }
+    
+    // Create notification
+    const notification = new Notification({
+      title: title,
+      body: body,
+      icon: createTrayIcon(),
+      silent: type === 'info' // Don't play sound for info notifications
+    });
+    
+    // Handle notification click - show window
+    notification.on('click', () => {
+      if (mainWindow) {
+        if (!mainWindow.isVisible()) {
+          mainWindow.show();
+        }
+        mainWindow.focus();
+        // Show dock icon when bringing window to front (macOS)
+        if (process.platform === 'darwin') {
+          app.dock.show();
+          setDockIcon();
+        }
+      }
+    });
+    
+    notification.show();
+    return { success: true };
+  } catch (error) {
+    console.error('Error showing notification:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('is-window-focused', () => {
+  return mainWindow ? mainWindow.isFocused() : false;
+});

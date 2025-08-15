@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PortCleaner - End the Port Conflict Madness | Minor Keith</title>
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .product-hero {
+            padding: 120px 20px 80px;
+            background: var(--light-bg);
+            text-align: center;
+        }
+        .product-hero h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: var(--secondary-color);
+        }
+        .product-tagline {
+            font-size: 1.3rem;
+            color: var(--text-color);
+            margin-bottom: 2rem;
+        }
+        .hero-cta {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .price-hero {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+        .problem-solution {
+            padding: 80px 20px;
+            background: var(--white);
+        }
+        .problem-box, .solution-box {
+            max-width: 800px;
+            margin: 0 auto 3rem;
+            padding: 2rem;
+            border-radius: 12px;
+        }
+        .problem-box {
+            background: #FEE2E2;
+            border: 2px solid #EF4444;
+        }
+        .solution-box {
+            background: #D1FAE5;
+            border: 2px solid var(--accent-color);
+        }
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+        .feature-card {
+            padding: 1.5rem;
+            background: var(--light-bg);
+            border-radius: 8px;
+        }
+        .feature-card h3 {
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+        .faq-section {
+            padding: 80px 20px;
+            background: var(--light-bg);
+        }
+        .faq-item {
+            max-width: 800px;
+            margin: 0 auto 2rem;
+            padding: 1.5rem;
+            background: var(--white);
+            border-radius: 8px;
+            box-shadow: var(--shadow-sm);
+        }
+        .faq-question {
+            font-weight: 600;
+            color: var(--secondary-color);
+            margin-bottom: 0.5rem;
+        }
+        .changelog {
+            padding: 80px 20px;
+            background: var(--white);
+        }
+        .version-item {
+            max-width: 800px;
+            margin: 0 auto 2rem;
+            padding-left: 2rem;
+            border-left: 3px solid var(--primary-color);
+        }
+        .version-number {
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+        }
+        .testimonial-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+        .testimonial-card {
+            padding: 1.5rem;
+            background: var(--white);
+            border-radius: 8px;
+            box-shadow: var(--shadow-sm);
+        }
+        .testimonial-text {
+            font-style: italic;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+        .testimonial-author {
+            font-weight: 600;
+            color: var(--secondary-color);
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="../index.html" class="nav-brand">KM</a>
+            <ul class="nav-menu" id="nav-menu" role="navigation">
+                <li><a href="../index.html#home" class="nav-link">Home</a></li>
+                <li><a href="../index.html#about" class="nav-link">About</a></li>
+                <li><a href="../index.html#applications" class="nav-link">Tools</a></li>
+                <li><a href="../index.html#services" class="nav-link">Hire Me</a></li>
+                <li><a href="../index.html#contact" class="nav-link">Contact</a></li>
+            </ul>
+            <button class="hamburger" aria-controls="nav-menu" aria-expanded="false" aria-label="Toggle navigation menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Product Hero -->
+    <section class="product-hero">
+        <img src="../images/portcleaner-icon.png" alt="PortCleaner Icon" style="width: 80px; height: 80px; margin-bottom: 1rem;">
+        <h1>PortCleaner</h1>
+        <p class="product-tagline">End the "Port 3000 is already in use" madness once and for all</p>
+        <div class="hero-cta">
+            <span class="price-hero">$12.00</span>
+            <button class="btn btn-primary" onclick="addToCartFromDetail('1', 'PortCleaner', 12)">Buy Now</button>
+            <a href="#features" class="btn btn-secondary">Learn More</a>
+        </div>
+    </section>
+
+    <!-- Screenshot -->
+    <section style="padding: 40px 20px; background: var(--white);">
+        <div class="container" style="text-align: center;">
+            <img src="../images/portcleaner.png" alt="PortCleaner Application Screenshot" style="max-width: 100%; height: auto; border-radius: 12px; box-shadow: var(--shadow);">
+        </div>
+    </section>
+
+    <!-- Problem/Solution -->
+    <section class="problem-solution">
+        <div class="container">
+            <div class="problem-box">
+                <h2>The Problem</h2>
+                <p>You know the drill. You're trying to start your dev server and...</p>
+                <code>Error: Port 3000 is already in use</code>
+                <p>Now you're opening Activity Monitor, trying to remember if it's under "node" or "Python" or something else entirely. You Google "lsof command mac" for the 100th time. You finally find the process. It's been running for 3 weeks. How is it using 2GB of RAM?</p>
+            </div>
+            
+            <div class="solution-box">
+                <h2>The Solution</h2>
+                <p>PortCleaner shows you exactly what's running on every port on your system. See the process name, how long it's been running, memory usage, and kill it with one click. No terminal commands. No hunting. Just click and it's gone.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features -->
+    <section id="features" class="problem-solution">
+        <div class="container">
+            <h2 class="section-title">Features</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <h3>Instant Port Scan</h3>
+                    <p>See all active ports and their processes in under a second. No more guessing what's running where.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>One-Click Kill</h3>
+                    <p>Found the culprit? One click and it's gone. No need to copy PIDs or type kill commands.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Smart Safety</h3>
+                    <p>Protected processes like databases are highlighted. You can still kill them, but we'll warn you first.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Memory Usage</h3>
+                    <p>See how much RAM each process is using. Find those forgotten dev servers eating your memory.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Process Age</h3>
+                    <p>Shows how long each process has been running. That webpack server from last month? Yeah, we see it.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Quick Filters</h3>
+                    <p>Filter by port range, process name, or just show the usual suspects (3000, 8080, 5000, etc.)</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Installation -->
+    <section class="faq-section">
+        <div class="container">
+            <h2 class="section-title">Installation & Usage</h2>
+            <div class="faq-item">
+                <div class="faq-question">Requirements</div>
+                <p>macOS 10.15 or later. That's it.</p>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question">Installation</div>
+                <p>1. Download PortCleaner.dmg<br>
+                   2. Drag to Applications folder<br>
+                   3. Open PortCleaner<br>
+                   4. Grant permission when asked (we need this to see port info)</p>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question">How to Use</div>
+                <p>Launch PortCleaner. It automatically scans all ports. Click any process to see details. Click "Kill Process" to end it. That's literally it.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="problem-solution">
+        <div class="container">
+            <h2 class="section-title">Frequently Asked Questions</h2>
+            <div class="faq-item">
+                <div class="faq-question">Is it safe?</div>
+                <p>Yes. PortCleaner only reads port information and sends standard kill signals. It can't access your files, network, or anything else. Plus, we warn you before killing important processes.</p>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question">Will it work with Docker?</div>
+                <p>Yes! PortCleaner shows all ports, including those used by Docker containers. It clearly labels Docker processes so you know what you're killing.</p>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question">What about Windows/Linux?</div>
+                <p>Currently macOS only. Windows and Linux versions are on the roadmap based on demand.</p>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question">Do I get updates?</div>
+                <p>Yes! All v1.x updates are free. When v2 comes out, you can upgrade at a discount or keep using v1 with continued updates.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials -->
+    <section class="faq-section">
+        <div class="container">
+            <h2 class="section-title">What Developers Say</h2>
+            <div class="testimonial-grid">
+                <div class="testimonial-card">
+                    <p class="testimonial-text">"I had 14 node processes running. FOURTEEN. Some from projects I deleted months ago. PortCleaner saved me 8GB of RAM."</p>
+                    <p class="testimonial-author">- Sarah, Full-Stack Developer</p>
+                </div>
+                <div class="testimonial-card">
+                    <p class="testimonial-text">"No more googling lsof commands. This should come pre-installed on every Mac."</p>
+                    <p class="testimonial-author">- Mike, DevOps Engineer</p>
+                </div>
+                <div class="testimonial-card">
+                    <p class="testimonial-text">"Found a Python server that had been running since 2023. I don't even remember what project that was for."</p>
+                    <p class="testimonial-author">- Alex, Data Scientist</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Changelog -->
+    <section class="changelog">
+        <div class="container">
+            <h2 class="section-title">Changelog</h2>
+            <div class="version-item">
+                <div class="version-number">v1.0.0 - Current</div>
+                <ul>
+                    <li>Initial release</li>
+                    <li>Basic port scanning and process killing</li>
+                    <li>Memory usage display</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- Final CTA -->
+    <section class="problem-solution">
+        <div class="container" style="text-align: center;">
+            <h2>Ready to reclaim your ports?</h2>
+            <p style="font-size: 1.2rem; margin: 2rem 0;">Join thousands of developers who never see "port already in use" errors anymore.</p>
+            <div class="hero-cta">
+                <span class="price-hero">$12.00</span>
+                <button class="btn btn-primary" onclick="addToCartFromDetail('1', 'PortCleaner', 12)" style="font-size: 1.2rem; padding: 1rem 2rem;">Buy PortCleaner Now</button>
+            </div>
+            <p style="margin-top: 1rem; color: var(--text-color); opacity: 0.8;">One-time purchase • Free v1 updates • 30-day money back guarantee</p>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p style="text-align: center;">&copy; 2025 Minor Keith. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        function addToCartFromDetail(id, name, price) {
+            // Get cart from localStorage
+            let cart = JSON.parse(localStorage.getItem('cart') || '[]');
+            
+            const existingItem = cart.find(item => item.id === id);
+            
+            if (existingItem) {
+                existingItem.quantity += 1;
+            } else {
+                cart.push({
+                    id: id,
+                    name: name,
+                    price: price,
+                    quantity: 1
+                });
+            }
+            
+            localStorage.setItem('cart', JSON.stringify(cart));
+            
+            // Visual feedback
+            alert('Added to cart! Redirecting to checkout...');
+            window.location.href = '../index.html#applications';
+        }
+
+        // Mobile menu toggle
+        const hamburger = document.querySelector('.hamburger');
+        const navMenu = document.querySelector('.nav-menu');
+        
+        hamburger.addEventListener('click', () => {
+            const isExpanded = hamburger.getAttribute('aria-expanded') === 'true';
+            hamburger.setAttribute('aria-expanded', !isExpanded);
+            navMenu.classList.toggle('active');
+        });
+    </script>
+</body>
+</html>

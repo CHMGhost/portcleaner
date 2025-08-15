@@ -3,327 +3,336 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minor Keith - SRE & Infrastructure Engineer</title>
+    <title>Minor Keith - SRE & DevOps Solutions</title>
     <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
+    <!-- Navigation -->
     <nav class="navbar">
         <div class="nav-container">
-            <div class="nav-brand">Minor Keith</div>
-            <ul class="nav-menu">
-                <li><a href="#about">About</a></li>
-                <li><a href="#skills">Skills</a></li>
-                <li><a href="#experience">Experience</a></li>
-                <li><a href="#projects">Projects</a></li>
-                <li><a href="#contact">Contact</a></li>
+            <a href="#home" class="nav-brand">KM</a>
+            <ul class="nav-menu" id="nav-menu" role="navigation">
+                <li><a href="#home" class="nav-link">Home</a></li>
+                <li><a href="#about" class="nav-link">About</a></li>
+                <li><a href="#applications" class="nav-link">Tools</a></li>
+                <li><a href="#services" class="nav-link">Hire Me</a></li>
+                <li><a href="#contact" class="nav-link">Contact</a></li>
             </ul>
-            <div class="nav-toggle">
+            <a href="#" class="cart-btn-mobile" aria-label="Shopping Cart">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 2L6 9H22L19 2H9Z"/>
+                    <path d="M6 9V22H19V9"/>
+                    <path d="M10 13V18"/>
+                    <path d="M14 13V18"/>
+                </svg>
+                <span class="cart-count" id="cart-count-mobile">0</span>
+            </a>
+            <button class="hamburger" aria-controls="nav-menu" aria-expanded="false" aria-label="Toggle navigation menu">
                 <span></span>
                 <span></span>
                 <span></span>
-            </div>
+            </button>
         </div>
     </nav>
 
-    <section id="hero">
+    <!-- Hero Section -->
+    <section id="home" class="hero">
         <div class="hero-content">
-            <div class="terminal-window">
-                <div class="terminal-header">
-                    <div class="terminal-button red"></div>
-                    <div class="terminal-button yellow"></div>
-                    <div class="terminal-button green"></div>
-                </div>
-                <div class="terminal-body">
-                    <div class="terminal-line">
-                        <span class="prompt">$</span> whoami
-                    </div>
-                    <div class="terminal-line typing">
-                        <span class="output">Minor Keith - Site Reliability Engineer</span>
-                    </div>
-                    <div class="terminal-line">
-                        <span class="prompt">$</span> cat expertise.txt
-                    </div>
-                    <div class="terminal-line">
-                        <span class="output">Infrastructure Automation | Cloud Architecture | DevOps</span>
-                    </div>
-                    <div class="terminal-line">
-                        <span class="prompt">$</span> <span class="cursor">_</span>
-                    </div>
-                </div>
-            </div>
-            <h1>Building Resilient Infrastructure</h1>
-            <p>Passionate about creating scalable, reliable, and efficient systems that power modern applications</p>
+            <h1 class="hero-title">Hi, I'm Minor Keith</h1>
+            <p class="hero-subtitle">Site Reliability Engineer & Infrastructure Specialist</p>
+            <p class="hero-description">Building DevOps tools that solve the daily pain points developers actually face</p>
             <div class="hero-buttons">
-                <a href="#contact" class="btn btn-primary">Get In Touch</a>
-                <a href="#projects" class="btn btn-secondary">View Projects</a>
+                <a href="#applications" class="btn btn-primary">Browse Applications</a>
+                <a href="#contact" class="btn btn-secondary">Get In Touch</a>
             </div>
+        </div>
+        <div class="hero-animation">
+            <div class="floating-element"></div>
         </div>
     </section>
 
-    <section id="about" class="section">
+    <!-- About Section -->
+    <section id="about" class="about">
         <div class="container">
-            <h2>About Me</h2>
+            <h2 class="section-title">About Me</h2>
             <div class="about-content">
                 <div class="about-text">
-                    <p>I'm a Site Reliability Engineer with a passion for building and maintaining robust infrastructure systems. My focus is on creating automated solutions that improve system reliability, reduce operational overhead, and enable teams to deliver value faster.</p>
-                    <p>I believe in the power of Infrastructure as Code, continuous improvement, and building systems that scale. When I'm not automating deployments or optimizing performance, you'll find me exploring new cloud technologies and contributing to open-source projects.</p>
-                </div>
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-number">99.9%</div>
-                        <div class="stat-label">Uptime Target</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-number">< 100ms</div>
-                        <div class="stat-label">Response Time</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-number">24/7</div>
-                        <div class="stat-label">Monitoring</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-number">∞</div>
-                        <div class="stat-label">Scalability</div>
-                    </div>
+                    <p>I'm an engineer who got tired of running `df -h` every day, so I started building tools to fix my own annoyances.</p>
+                    <p><strong>Currently shipping:</strong></p>
+                    <ul class="skills-list">
+                        <li>NodeVac - Because 47GB of node_modules is insane</li>
+                        <li>PortCleaner - For when you forget what's running on :8080</li>
+                        <li>DockerVac - Docker ate 134GB of my disk. Never again.</li>
+                    </ul>
+                    <p>With more to come.</p>
+                    <p>When I'm not cleaning up disk space, I'm wrangling Kubernetes clusters and automating everything that annoys me more than twice.</p>
                 </div>
             </div>
         </div>
     </section>
 
-    <section id="skills" class="section section-alt">
+    <!-- Applications Section -->
+    <section id="applications" class="applications">
         <div class="container">
-            <h2>Technical Skills</h2>
-            <div class="skills-grid">
-                <div class="skill-category">
-                    <h3>Cloud Platforms</h3>
-                    <div class="skill-tags">
-                        <span class="skill-tag">AWS</span>
-                        <span class="skill-tag">Google Cloud</span>
-                        <span class="skill-tag">Azure</span>
-                        <span class="skill-tag">DigitalOcean</span>
-                    </div>
-                </div>
-                <div class="skill-category">
-                    <h3>Infrastructure as Code</h3>
-                    <div class="skill-tags">
-                        <span class="skill-tag">Terraform</span>
-                        <span class="skill-tag">Ansible</span>
-                        <span class="skill-tag">CloudFormation</span>
-                        <span class="skill-tag">Pulumi</span>
-                    </div>
-                </div>
-                <div class="skill-category">
-                    <h3>Container & Orchestration</h3>
-                    <div class="skill-tags">
-                        <span class="skill-tag">Docker</span>
-                        <span class="skill-tag">Kubernetes</span>
-                        <span class="skill-tag">Helm</span>
-                        <span class="skill-tag">ECS/EKS</span>
-                    </div>
-                </div>
-                <div class="skill-category">
-                    <h3>CI/CD & Automation</h3>
-                    <div class="skill-tags">
-                        <span class="skill-tag">Jenkins</span>
-                        <span class="skill-tag">GitHub Actions</span>
-                        <span class="skill-tag">GitLab CI</span>
-                        <span class="skill-tag">ArgoCD</span>
-                    </div>
-                </div>
-                <div class="skill-category">
-                    <h3>Monitoring & Observability</h3>
-                    <div class="skill-tags">
-                        <span class="skill-tag">Prometheus</span>
-                        <span class="skill-tag">Grafana</span>
-                        <span class="skill-tag">ELK Stack</span>
-                        <span class="skill-tag">Datadog</span>
-                    </div>
-                </div>
-                <div class="skill-category">
-                    <h3>Languages & Scripts</h3>
-                    <div class="skill-tags">
-                        <span class="skill-tag">Python</span>
-                        <span class="skill-tag">Go</span>
-                        <span class="skill-tag">Bash</span>
-                        <span class="skill-tag">JavaScript</span>
-                    </div>
-                </div>
+            <h2 class="section-title">Developer Tools</h2>
+            <p class="section-subtitle">Solutions for the problems that drive developers crazy</p>
+            
+            <div class="update-policy">
+                <span class="policy-icon">🔄</span>
+                <p><strong>Free Updates Policy:</strong> Buy once, get free updates for the entire major version. When v2 comes out, v1 customers keep getting v1 updates free.</p>
             </div>
-        </div>
-    </section>
-
-    <section id="experience" class="section">
-        <div class="container">
-            <h2>Experience Highlights</h2>
-            <div class="experience-timeline">
-                <div class="timeline-item">
-                    <div class="timeline-dot"></div>
-                    <div class="timeline-content">
-                        <h3>Infrastructure Modernization</h3>
-                        <p>Led migration of legacy infrastructure to cloud-native architecture, reducing operational costs by 40% and improving deployment frequency by 300%.</p>
-                        <div class="tech-stack">
-                            <span>Kubernetes</span>
-                            <span>Terraform</span>
-                            <span>AWS</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="timeline-item">
-                    <div class="timeline-dot"></div>
-                    <div class="timeline-content">
-                        <h3>Observability Platform</h3>
-                        <p>Designed and implemented comprehensive monitoring solution providing real-time insights into system health, reducing MTTR by 60%.</p>
-                        <div class="tech-stack">
-                            <span>Prometheus</span>
-                            <span>Grafana</span>
-                            <span>AlertManager</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="timeline-item">
-                    <div class="timeline-dot"></div>
-                    <div class="timeline-content">
-                        <h3>CI/CD Pipeline Optimization</h3>
-                        <p>Rebuilt deployment pipelines with GitOps principles, achieving zero-downtime deployments and 15-minute commit-to-production cycles.</p>
-                        <div class="tech-stack">
-                            <span>ArgoCD</span>
-                            <span>GitHub Actions</span>
-                            <span>Helm</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="timeline-item">
-                    <div class="timeline-dot"></div>
-                    <div class="timeline-content">
-                        <h3>Disaster Recovery Strategy</h3>
-                        <p>Architected multi-region failover system with automated backup and recovery procedures, achieving RPO < 1 hour and RTO < 4 hours.</p>
-                        <div class="tech-stack">
-                            <span>Multi-Region</span>
-                            <span>Automation</span>
-                            <span>Chaos Engineering</span>
-                        </div>
-                    </div>
-                </div>
+            
+            <div class="filter-buttons">
+                <button class="filter-btn active" data-filter="all">All Tools <span class="filter-count">(3)</span></button>
+                <button class="filter-btn" data-filter="available">Available <span class="filter-count">(1)</span></button>
+                <button class="filter-btn" data-filter="coming-soon">Coming Soon <span class="filter-count">(2)</span></button>
             </div>
-        </div>
-    </section>
 
-    <section id="projects" class="section section-alt">
-        <div class="container">
-            <h2>Featured Projects</h2>
-            <div class="projects-grid">
-                <div class="project-card">
-                    <div class="project-header">
-                        <h3>Cloud Cost Optimizer</h3>
-                        <span class="project-status">Active</span>
+            <div class="products-grid" id="products-grid">
+                <!-- PortCleaner -->
+                <div class="product-card" data-category="available" data-status="available">
+                    <div class="product-badges">
+                        <span class="product-badge badge-available">Available Now</span>
+                        <span class="product-badge badge-updates">Free v1 Updates</span>
                     </div>
-                    <p>Automated tool for analyzing and optimizing cloud resource usage, identifying idle resources and right-sizing recommendations.</p>
-                    <div class="project-metrics">
-                        <div class="metric">
-                            <span class="metric-value">30%</span>
-                            <span class="metric-label">Cost Reduction</span>
+                    <a href="tools/portcleaner.html" class="product-image-link">
+                        <div class="product-image">
+                            <img src="images/portcleaner-icon.png" alt="PortCleaner Icon">
                         </div>
-                        <div class="metric">
-                            <span class="metric-value">500+</span>
-                            <span class="metric-label">Resources Analyzed</span>
+                    </a>
+                    <div class="product-info">
+                        <a href="tools/portcleaner.html" class="product-title-link">
+                            <h3>PortCleaner</h3>
+                        </a>
+                        <p>Stop the "Error: Port 3000 is already in use" madness. See what's running on every port and kill it with one click. No more hunting through Activity Monitor or memorizing lsof commands.</p>
+                        <div class="product-features">
+                            <span class="feature-tag">macOS</span>
+                            <span class="feature-tag">System Tool</span>
+                            <span class="feature-tag">One-Click</span>
+                        </div>
+                        <div class="product-pricing">
+                            <div class="product-price">
+                                <span class="price">$12.00</span>
+                                <span class="price-period">one-time</span>
+                            </div>
+                            <div class="license-info">Single user license • Unlimited machines</div>
+                        </div>
+                        <button class="btn btn-primary add-to-cart" data-product-id="1" data-name="PortCleaner" data-price="12">Add to Cart</button>
+                    </div>
+                </div>
+
+                <!-- DockerVac -->
+                <div class="product-card" data-category="coming-soon" data-status="coming-soon">
+                    <div class="product-badges">
+                        <span class="product-badge badge-coming">Coming Soon</span>
+                        <span class="product-badge badge-updates">Free v1 Updates</span>
+                    </div>
+                    <a href="tools/dockervac.html" class="product-image-link">
+                        <div class="product-image">
+                            <img src="https://via.placeholder.com/400x250/10B981/ffffff?text=DockerVac" alt="DockerVac Preview">
+                        </div>
+                    </a>
+                    <div class="product-info">
+                        <a href="tools/dockervac.html" class="product-title-link">
+                            <h3>DockerVac</h3>
+                        </a>
+                        <p>Docker is eating your disk alive. Uncover gigabytes of dangling images, stopped containers, and build cache. Most developers discover 50-100GB of Docker waste on their first scan.</p>
+                        <div class="product-features">
+                            <span class="feature-tag">Docker</span>
+                            <span class="feature-tag">Disk Cleanup</span>
+                            <span class="feature-tag">Smart Safety</span>
+                        </div>
+                        <div class="product-pricing">
+                            <div class="product-price">
+                                <span class="price">$14.00</span>
+                                <span class="price-period">one-time</span>
+                            </div>
+                            <div class="license-info">Single user license • Unlimited machines</div>
+                        </div>
+                        <div class="waitlist-form">
+                            <input type="email" placeholder="Enter email for launch notification" class="waitlist-email" data-product="DockerVac">
+                            <button class="btn btn-secondary join-waitlist" data-product="DockerVac">Join Waitlist</button>
                         </div>
                     </div>
                 </div>
-                <div class="project-card">
-                    <div class="project-header">
-                        <h3>K8s Auto-Scaler</h3>
-                        <span class="project-status">Active</span>
+
+                <!-- NodeVac -->
+                <div class="product-card" data-category="coming-soon" data-status="coming-soon">
+                    <div class="product-badges">
+                        <span class="product-badge badge-coming">Coming Soon</span>
+                        <span class="product-badge badge-updates">Free v1 Updates</span>
                     </div>
-                    <p>Custom Kubernetes autoscaler with predictive scaling based on historical metrics and business patterns.</p>
-                    <div class="project-metrics">
-                        <div class="metric">
-                            <span class="metric-value">< 30s</span>
-                            <span class="metric-label">Scale Time</span>
+                    <a href="tools/nodevac.html" class="product-image-link">
+                        <div class="product-image">
+                            <img src="https://via.placeholder.com/400x250/F59E0B/ffffff?text=NodeVac" alt="NodeVac Preview">
                         </div>
-                        <div class="metric">
-                            <span class="metric-value">95%</span>
-                            <span class="metric-label">Prediction Accuracy</span>
+                    </a>
+                    <div class="product-info">
+                        <a href="tools/nodevac.html" class="product-title-link">
+                            <h3>NodeVac</h3>
+                        </a>
+                        <p>Every JavaScript developer's guilty secret: gigabytes of node_modules scattered across old projects. Find and eliminate these space hogs with one click. Watch as NodeVac reveals "You have 47GB of node_modules".</p>
+                        <div class="product-features">
+                            <span class="feature-tag">Node.js</span>
+                            <span class="feature-tag">Disk Cleanup</span>
+                            <span class="feature-tag">Safe Delete</span>
                         </div>
-                    </div>
-                </div>
-                <div class="project-card">
-                    <div class="project-header">
-                        <h3>Incident Response Bot</h3>
-                        <span class="project-status">Active</span>
-                    </div>
-                    <p>Slack bot for automated incident management, integrating with PagerDuty, Jira, and monitoring systems for streamlined response.</p>
-                    <div class="project-metrics">
-                        <div class="metric">
-                            <span class="metric-value">50%</span>
-                            <span class="metric-label">Faster Response</span>
+                        <div class="product-pricing">
+                            <div class="product-price">
+                                <span class="price">$14.00</span>
+                                <span class="price-period">one-time</span>
+                            </div>
+                            <div class="license-info">Single user license • Unlimited machines</div>
                         </div>
-                        <div class="metric">
-                            <span class="metric-value">24/7</span>
-                            <span class="metric-label">Availability</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="project-card">
-                    <div class="project-header">
-                        <h3>IaC Template Library</h3>
-                        <span class="project-status">Open Source</span>
-                    </div>
-                    <p>Collection of production-ready Terraform modules for common infrastructure patterns with security best practices built-in.</p>
-                    <div class="project-metrics">
-                        <div class="metric">
-                            <span class="metric-value">50+</span>
-                            <span class="metric-label">Modules</span>
-                        </div>
-                        <div class="metric">
-                            <span class="metric-value">1k+</span>
-                            <span class="metric-label">Downloads</span>
+                        <div class="waitlist-form">
+                            <input type="email" placeholder="Enter email for launch notification" class="waitlist-email" data-product="NodeVac">
+                            <button class="btn btn-secondary join-waitlist" data-product="NodeVac">Join Waitlist</button>
                         </div>
                     </div>
                 </div>
             </div>
+            
+            <div id="empty-state" class="empty-state" style="display: none;">
+                <p>No tools found matching your filter. Try selecting a different category.</p>
+            </div>
         </div>
     </section>
 
-    <section id="contact" class="section">
+    <!-- Services Section -->
+    <section id="services" class="services">
         <div class="container">
-            <h2>Let's Connect</h2>
+            <h2 class="section-title">Hire Me</h2>
+            <p class="section-subtitle">Available for consulting and contract work</p>
+            
+            <div class="services-grid">
+                <div class="service-card">
+                    <h3>SRE Consulting</h3>
+                    <p>Site reliability reviews, incident response setup, monitoring & alerting strategy, runbook development.</p>
+                    <ul>
+                        <li>Kubernetes cluster optimization</li>
+                        <li>CI/CD pipeline design</li>
+                        <li>Infrastructure as Code</li>
+                    </ul>
+                </div>
+                
+                <div class="service-card">
+                    <h3>Developer Tools</h3>
+                    <p>Custom tooling to solve your team's specific pain points. If you're doing something manually more than twice, let's automate it.</p>
+                    <ul>
+                        <li>CLI tool development</li>
+                        <li>Build system optimization</li>
+                        <li>Developer experience improvements</li>
+                    </ul>
+                </div>
+                
+                <div class="service-card">
+                    <h3>Performance Audits</h3>
+                    <p>Find out why your app is slow, your builds take forever, or your cloud bill is astronomical.</p>
+                    <ul>
+                        <li>Application profiling</li>
+                        <li>Database optimization</li>
+                        <li>Cost reduction strategies</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="services-cta">
+                <p>Interested? Let's talk about your challenges.</p>
+                <a href="#contact" class="btn btn-primary">Get In Touch</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section id="contact" class="contact">
+        <div class="container">
+            <h2 class="section-title">Let's Connect</h2>
+            <p class="section-subtitle">Have a project in mind or need a custom solution?</p>
+            
             <div class="contact-content">
-                <p>I'm always interested in discussing infrastructure challenges, reliability engineering, and opportunities to build resilient systems.</p>
-                <div class="contact-grid">
-                    <a href="mailto:your.email@example.com" class="contact-card">
-                        <svg class="contact-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="2" y="4" width="20" height="16" rx="2"/>
-                            <path d="m22 7-10 5L2 7"/>
-                        </svg>
-                        <span>Email</span>
-                    </a>
-                    <a href="https://github.com/CHMGhost" class="contact-card">
-                        <svg class="contact-icon" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.44 9.81 8.21 11.4.6.11.82-.26.82-.58 0-.29-.01-1.05-.02-2.06-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.21.08 1.84 1.24 1.84 1.24 1.07 1.84 2.81 1.31 3.5 1 .11-.78.42-1.31.76-1.61-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.12-.3-.54-1.52.12-3.18 0 0 1.01-.32 3.3 1.23.96-.27 1.98-.4 3-.41 1.02.01 2.04.14 3 .41 2.29-1.55 3.3-1.23 3.3-1.23.66 1.66.24 2.88.12 3.18.77.84 1.24 1.91 1.24 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22 0 1.61-.01 2.9-.01 3.29 0 .32.22.69.83.58C20.57 21.81 24 17.31 24 12c0-6.63-5.37-12-12-12z"/>
-                        </svg>
-                        <span>GitHub</span>
-                    </a>
-                    <a href="https://linkedin.com/in/yourprofile" class="contact-card">
-                        <svg class="contact-icon" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M20.5 2h-17A1.5 1.5 0 002 3.5v17A1.5 1.5 0 003.5 22h17a1.5 1.5 0 001.5-1.5v-17A1.5 1.5 0 0020.5 2zM8 19H5v-9h3zM6.5 8.25A1.75 1.75 0 118.3 6.5a1.78 1.78 0 01-1.8 1.75zM19 19h-3v-4.74c0-1.42-.6-1.93-1.38-1.93A1.74 1.74 0 0013 14.19a.66.66 0 000 .14V19h-3v-9h2.9v1.3a3.11 3.11 0 012.7-1.4c1.55 0 3.36.86 3.36 3.66z"/>
-                        </svg>
-                        <span>LinkedIn</span>
-                    </a>
-                    <a href="https://twitter.com/yourhandle" class="contact-card">
-                        <svg class="contact-icon" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                        </svg>
-                        <span>X (Twitter)</span>
-                    </a>
+                <div class="contact-info">
+                    <div class="contact-item">
+                        <h3>Email</h3>
+                        <p>me@minorkeith.com</p>
+                    </div>
+                    <div class="contact-item">
+                        <h3>Location</h3>
+                        <p>United States</p>
+                    </div>
+                    <div class="contact-item">
+                        <h3>Availability</h3>
+                        <p>Mon - Fri, 9am - 6pm EST</p>
+                    </div>
                 </div>
+                
+                <form class="contact-form">
+                    <input type="text" name="name" placeholder="Your Name" required>
+                    <input type="email" name="email" placeholder="Your Email" required>
+                    <select name="inquiryType" required>
+                        <option value="">Select Inquiry Type</option>
+                        <option value="purchase">Product Purchase</option>
+                        <option value="custom">Custom Development</option>
+                        <option value="support">Support</option>
+                        <option value="other">Other</option>
+                    </select>
+                    <textarea name="message" placeholder="Your Message" rows="5" required></textarea>
+                    <button type="submit" class="btn btn-primary">Send Message</button>
+                </form>
             </div>
         </div>
     </section>
 
+    <!-- Cart Modal -->
+    <div id="cart-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2>Shopping Cart</h2>
+            <div id="cart-items"></div>
+            <div class="cart-total">
+                <strong>Total:</strong> <span id="cart-total">$0</span>
+            </div>
+            <button class="btn btn-primary checkout-btn">Proceed to Checkout</button>
+        </div>
+    </div>
+
+    <!-- Footer -->
     <footer class="footer">
         <div class="container">
-            <p>&copy; 2024 Minor Keith. Built with passion for infrastructure.</p>
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>Minor Keith</h3>
+                    <p>Engineer. Tool builder. Chronic documenter.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul>
+                        <li><a href="#home">Home</a></li>
+                        <li><a href="#about">About</a></li>
+                        <li><a href="#applications">Applications</a></li>
+                        <li><a href="#contact">Contact</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Legal</h4>
+                    <ul>
+                        <li><a href="privacy-policy.html">Privacy Policy</a></li>
+                        <li><a href="terms-of-service.html">Terms of Service</a></li>
+                        <li><a href="refund-policy.html">Refund Policy</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Connect</h4>
+                    <ul>
+                        <li><a href="https://github.com/CHMGhost">GitHub</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 Minor Keith. All rights reserved. Free updates included for all major versions.</p>
+            </div>
         </div>
     </footer>
 

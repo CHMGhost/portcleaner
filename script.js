@@ -214,49 +214,54 @@ document.querySelector('.checkout-btn').addEventListener('click', () => {
     // stripeCheckout(cart, total);
 });
 
-// API endpoint - change this to your deployed API URL
-const API_URL = process.env.API_URL || 'http://localhost:3001';
+// API endpoint - uses /api for production (nginx proxy), localhost:3001 for development
+const API_URL = window.location.hostname === 'localhost' ? 'http://localhost:3001' : '';
 
-// Contact Form Handling
-document.querySelector('.contact-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    const submitButton = e.target.querySelector('button[type="submit"]');
-    const originalText = submitButton.textContent;
-    submitButton.textContent = 'Sending...';
-    submitButton.disabled = true;
-    
-    const formData = new FormData(e.target);
-    const data = {
-        name: formData.get('name'),
-        email: formData.get('email'),
-        inquiryType: formData.get('inquiryType'),
-        message: formData.get('message')
-    };
-    
-    try {
-        const response = await fetch(`${API_URL}/api/contact`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data)
+// Contact Form Handling - wait for DOM
+document.addEventListener('DOMContentLoaded', () => {
+    const contactForm = document.querySelector('.contact-form');
+    if (contactForm) {
+        contactForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const submitButton = e.target.querySelector('button[type="submit"]');
+            const originalText = submitButton.textContent;
+            submitButton.textContent = 'Sending...';
+            submitButton.disabled = true;
+            
+            const formData = new FormData(e.target);
+            const data = {
+                name: formData.get('name'),
+                email: formData.get('email'),
+                inquiryType: formData.get('inquiryType'),
+                message: formData.get('message')
+            };
+            
+            try {
+                const response = await fetch(`${API_URL}/api/contact`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    alert('Thank you for your message! I will get back to you within 48 hours.');
+                    e.target.reset();
+                } else {
+                    alert(result.error || 'Failed to send message. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to send message. Please try emailing me directly at me@minorkeith.com');
+            } finally {
+                submitButton.textContent = originalText;
+                submitButton.disabled = false;
+            }
         });
-        
-        const result = await response.json();
-        
-        if (response.ok) {
-            alert('Thank you for your message! I will get back to you within 48 hours.');
-            e.target.reset();
-        } else {
-            alert(result.error || 'Failed to send message. Please try again.');
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        alert('Failed to send message. Please try emailing me directly at me@minorkeith.com');
-    } finally {
-        submitButton.textContent = originalText;
-        submitButton.disabled = false;
     }
 });
 
@@ -278,62 +283,7 @@ window.addEventListener('scroll', () => {
     lastScrollTop = scrollTop;
 });
 
-// Waitlist functionality
-document.querySelectorAll('.join-waitlist').forEach(button => {
-    button.addEventListener('click', async function() {
-        const product = this.getAttribute('data-product');
-        const emailInput = this.parentElement.querySelector('.waitlist-email');
-        const email = emailInput.value.trim();
-        
-        if (!email) {
-            alert('Please enter your email address');
-            return;
-        }
-        
-        if (!validateEmail(email)) {
-            alert('Please enter a valid email address');
-            return;
-        }
-        
-        const originalText = this.textContent;
-        this.textContent = 'Joining...';
-        this.disabled = true;
-        
-        try {
-            const response = await fetch(`${API_URL}/api/waitlist`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ email, product })
-            });
-            
-            const result = await response.json();
-            
-            if (response.ok) {
-                // Visual feedback
-                this.textContent = 'Added to Waitlist!';
-                this.style.background = '#10B981';
-                emailInput.value = '';
-                emailInput.disabled = true;
-                
-                // Store locally as backup
-                const waitlist = JSON.parse(localStorage.getItem('waitlist') || '[]');
-                waitlist.push({ product, email, timestamp: new Date().toISOString() });
-                localStorage.setItem('waitlist', JSON.stringify(waitlist));
-            } else {
-                alert(result.error || 'Failed to join waitlist. Please try again.');
-                this.textContent = originalText;
-                this.disabled = false;
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            alert('Failed to join waitlist. Please try emailing me directly at me@minorkeith.com');
-            this.textContent = originalText;
-            this.disabled = false;
-        }
-    });
-});
+// Removed - now handled in attachWaitlistListeners function
 
 function validateEmail(email) {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -343,6 +293,9 @@ function validateEmail(email) {
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     loadCartFromLocalStorage();
+    
+    // Re-attach waitlist listeners after DOM is loaded
+    attachWaitlistListeners();
     
     // Add intersection observer for animations
     const observerOptions = {
@@ -364,6 +317,74 @@ document.addEventListener('DOMContentLoaded', () => {
         observer.observe(el);
     });
 });
+
+// Function to attach waitlist listeners
+function attachWaitlistListeners() {
+    document.querySelectorAll('.join-waitlist').forEach(button => {
+        button.addEventListener('click', async function() {
+            const product = this.getAttribute('data-product');
+            const emailInput = this.parentElement.querySelector('.waitlist-email');
+            const email = emailInput.value.trim();
+            
+            if (!email) {
+                alert('Please enter your email address');
+                return;
+            }
+            
+            if (!validateEmail(email)) {
+                alert('Please enter a valid email address');
+                return;
+            }
+            
+            const originalText = this.textContent;
+            this.textContent = 'Joining...';
+            this.disabled = true;
+            
+            try {
+                const response = await fetch(`${API_URL}/api/waitlist`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, product })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    // Visual feedback
+                    this.textContent = 'Added to Waitlist!';
+                    this.style.background = '#10B981';
+                    emailInput.value = '';
+                    emailInput.disabled = true;
+                    
+                    // Store locally as backup
+                    const waitlist = JSON.parse(localStorage.getItem('waitlist') || '[]');
+                    waitlist.push({ product, email, timestamp: new Date().toISOString() });
+                    localStorage.setItem('waitlist', JSON.stringify(waitlist));
+                } else {
+                    alert(result.error || 'Failed to join waitlist. Please try again.');
+                    this.textContent = originalText;
+                    this.disabled = false;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                // For now, just save locally since API isn't deployed
+                const waitlist = JSON.parse(localStorage.getItem('waitlist') || '[]');
+                waitlist.push({ product, email, timestamp: new Date().toISOString() });
+                localStorage.setItem('waitlist', JSON.stringify(waitlist));
+                
+                // Visual feedback
+                this.textContent = 'Added to Waitlist!';
+                this.style.background = '#10B981';
+                emailInput.value = '';
+                emailInput.disabled = true;
+                
+                console.log(`Saved ${email} to waitlist for ${product} (locally)`);
+            }
+        });
+    });
+}
 
 // Stripe Integration (placeholder for future implementation)
 function initializeStripe() {

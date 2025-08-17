@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Preferences</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self';">
+  <link rel="stylesheet" href="preferences.css">
+</head>
+<body>
+  <div class="preferences-container">
+    <div class="sidebar">
+      <div class="sidebar-item active" data-section="general">
+        <span>General</span>
+      </div>
+      <div class="sidebar-item" data-section="appearance">
+        <span>Appearance</span>
+      </div>
+      <div class="sidebar-item" data-section="behavior">
+        <span>Behavior</span>
+      </div>
+      <div class="sidebar-item" data-section="advanced">
+        <span>Advanced</span>
+      </div>
+    </div>
+    
+    <div class="content">
+      <!-- General Section -->
+      <div class="section active" id="general">
+        <h2>General</h2>
+        
+        <div class="preference-group">
+          <h3>Startup</h3>
+          <div class="preference-item">
+            <div class="preference-label">
+              <span>Launch at startup</span>
+              <small>Start PortCleaner when you log in</small>
+            </div>
+            <input type="checkbox" id="launchAtStartup">
+          </div>
+          <div class="preference-item">
+            <div class="preference-label">
+              <span>Start minimized</span>
+              <small>Start in the menu bar without showing window</small>
+            </div>
+            <input type="checkbox" id="startMinimized" checked>
+          </div>
+        </div>
+        
+        <div class="preference-group">
+          <h3>Auto-refresh</h3>
+          <div class="preference-item">
+            <div class="preference-label">
+              <span>Enable auto-refresh</span>
+              <small>Automatically refresh port list</small>
+            </div>
+            <input type="checkbox" id="autoRefreshEnabled" checked>
+          </div>
+          <div class="preference-item">
+            <div class="preference-label">
+              <span>Refresh interval</span>
+              <small>How often to refresh ports</small>
+            </div>
+            <select id="refreshInterval">
+              <option value="1000">1 second</option>
+              <option value="2000">2 seconds</option>
+              <option value="5000" selected>5 seconds</option>
+              <option value="10000">10 seconds</option>
+              <option value="30000">30 seconds</option>
+              <option value="60000">1 minute</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Appearance Section -->
+      <div class="section" id="appearance">
+        <h2>Appearance</h2>
+        
+        <div class="preference-group">
+          <h3>Theme</h3>
+          <div class="preference-item">
+            <div class="preference-label">
+              <span>Color theme</span>
+              <small>Choose your preferred color scheme</small>
+            </div>
+            <select id="theme">
+              <option value="system">System</option>
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="preference-group">
+          <h3>Display</h3>
+          <div class="preference-item">
+            <div class="preference-label">
+              <span>Show port icons</span>
+              <small>Display icons for known services</small>
+            </div>
+            <input type="checkbox" id="showPortIcons">
+          </div>
+          <div class="preference-item">
+            <div class="preference-label">
+              <span>Compact mode</span>
+              <small>Reduce spacing for more information</small>
+            </div>
+            <input type="checkbox" id="compactMode">
+          </div>
+        </div>
+      </div>
+      
+      <!-- Behavior Section -->
+      <div class="section" id="behavior">
+        <h2>Behavior</h2>
+        
+        <div class="preference-group">
+          <h3>Confirmations</h3>
+          <div class="preference-item">
+            <div class="preference-label">
+              <span>Confirm before stopping processes</span>
+              <small>Show confirmation dialog</small>
+            </div>
+            <input type="checkbox" id="confirmStop" checked>
+          </div>
+          <div class="preference-item">
+            <div class="preference-label">
+              <span>Warn about protected processes</span>
+              <small>Show warnings for system processes</small>
+            </div>
+            <input type="checkbox" id="warnProtected" checked>
+          </div>
+        </div>
+        
+        <div class="preference-group">
+          <h3>Notifications</h3>
+          <div class="preference-item">
+            <div class="preference-label">
+              <span>Show notifications</span>
+              <small>Display system notifications for actions</small>
+            </div>
+            <input type="checkbox" id="showNotifications" checked>
+          </div>
+          <div class="preference-item">
+            <div class="preference-label">
+              <span>Sound alerts</span>
+              <small>Play sounds for important events</small>
+            </div>
+            <input type="checkbox" id="soundAlerts">
+          </div>
+        </div>
+      </div>
+      
+      <!-- Advanced Section -->
+      <div class="section" id="advanced">
+        <h2>Advanced</h2>
+        
+        
+        <div class="preference-group">
+          <h3>Performance</h3>
+          <div class="preference-item">
+            <div class="preference-label">
+              <span>Max ports to display</span>
+              <small>Limit for better performance</small>
+            </div>
+            <input type="number" id="maxPorts" value="1000" min="100" max="10000">
+          </div>
+          <div class="preference-item">
+            <div class="preference-label">
+              <span>Enable virtualization</span>
+              <small>Use virtual scrolling for large lists</small>
+            </div>
+            <input type="checkbox" id="enableVirtualization" checked>
+          </div>
+        </div>
+        
+        <div class="preference-group">
+          <h3>Developer</h3>
+          <div class="preference-item">
+            <div class="preference-label">
+              <span>Show hidden processes</span>
+              <small>Display system and hidden processes</small>
+            </div>
+            <input type="checkbox" id="showHidden">
+          </div>
+          <div class="preference-item">
+            <div class="preference-label">
+              <span>Debug mode</span>
+              <small>Enable debug logging</small>
+            </div>
+            <input type="checkbox" id="debugMode">
+          </div>
+        </div>
+        
+        <div class="buttons">
+          <button id="resetDefaults">Reset to Defaults</button>
+          <button id="exportSettings">Export Settings</button>
+          <button id="importSettings">Import Settings</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script src="preferences.js"></script>
+</body>
+</html>

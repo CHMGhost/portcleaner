@@ -2,7 +2,6 @@ const { app, BrowserWindow, ipcMain, dialog, Menu, Tray, nativeImage, shell, nat
 const path = require('path');
 const PortManager = require('./utils/portManager');
 const { createTrayIcon, createStatusIcon } = require('./utils/trayIcon');
-const telemetry = require('./utils/telemetry');
 
 // Set app name early for macOS menu
 app.setName('PortCleaner');
@@ -46,7 +45,7 @@ function setAppIcon() {
           app.setAboutPanelOptions({
             applicationName: 'PortCleaner',
             applicationVersion: app.getVersion(),
-            copyright: '© 2025 PortCleaner',
+            copyright: '© 2025 PortCleaner\nSupport: me@minorkeith.com',
             version: app.getVersion(),
             iconPath: iconPath
           });
@@ -119,7 +118,7 @@ function createWindow() {
   mainWindow = new BrowserWindow(windowConfig);
 
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
-  // mainWindow.webContents.openDevTools(); // Commented out for production
+  // mainWindow.webContents.openDevTools(); // Developer console disabled for production
   
   // Window stays hidden until user explicitly opens it from tray
   
@@ -278,7 +277,6 @@ function updateTrayMenu() {
 // Quick scan function
 async function quickScanPorts() {
   try {
-    telemetry.trackAction('quick_scan', 'port_actions');
     const ports = await portManager.getAllPorts();
     activePortCount = ports.length;
     
@@ -523,9 +521,10 @@ function showAboutDialog() {
       message: 'PortCleaner',
       detail: `Version: ${version}\n` +
               `A modern port management utility for developers.\n\n` +
-              `Electron: ${electronVersion}\n` +
+              `Engine: v${electronVersion}\n` +
               `Node: ${nodeVersion}\n\n` +
-              `© 2024 PortCleaner. All rights reserved.`,
+              `© 2025 PortCleaner. All rights reserved.\n` +
+              `Support: me@minorkeith.com`,
       buttons: ['OK'],
       icon: nativeImage.createFromPath(path.join(__dirname, 'assets', 'icon256.png'))
     });
@@ -587,101 +586,13 @@ function showKeyboardShortcuts() {
   });
 }
 
-// Show telemetry opt-in dialog
-async function showTelemetryOptInDialog() {
-  const result = await dialog.showMessageBox(null, {
-    type: 'question',
-    title: 'Help Improve PortCleaner',
-    message: 'Help us improve PortCleaner',
-    detail: 'Would you like to share anonymous usage data to help us improve PortCleaner?\n\n' +
-            'We collect:\n' +
-            '• Anonymous usage statistics\n' +
-            '• Crash reports and errors\n' +
-            '• Feature usage patterns\n' +
-            '• System information (OS, version)\n\n' +
-            'We NEVER collect:\n' +
-            '• Personal information\n' +
-            '• Port data or process names\n' +
-            '• Network traffic\n' +
-            '• File paths or contents\n\n' +
-            'You can change this setting anytime in Preferences.',
-    buttons: ['Share Anonymous Data', 'No Thanks'],
-    defaultId: 0,
-    cancelId: 1,
-    noLink: true
-  });
-  
-  const telemetryEnabled = result.response === 0;
-  
-  // Save preference
-  const prefs = store.get('preferences', {});
-  prefs.telemetryEnabled = telemetryEnabled;
-  store.set('preferences', prefs);
-  store.set('hasSeenTelemetryPrompt', true);
-  
-  // Enable/disable telemetry
-  telemetry.setEnabled(telemetryEnabled);
-  
-  return telemetryEnabled;
-}
 
-// Show privacy policy
-function showPrivacyPolicy() {
-  dialog.showMessageBox(preferencesWindow || mainWindow, {
-    type: 'info',
-    title: 'Privacy Policy',
-    message: 'PortCleaner Privacy Policy',
-    detail: 'PortCleaner respects your privacy and is committed to protecting your data.\n\n' +
-            'WHAT WE COLLECT (when telemetry is enabled):\n' +
-            '• Anonymous user ID (hashed machine identifier)\n' +
-            '• App version and system information\n' +
-            '• Feature usage statistics\n' +
-            '• Error and crash reports\n' +
-            '• Performance metrics\n\n' +
-            'WHAT WE DO NOT COLLECT:\n' +
-            '• Personal information or identifiable data\n' +
-            '• Process names or port details\n' +
-            '• Network traffic or connections\n' +
-            '• File contents or paths\n' +
-            '• Location information\n\n' +
-            'HOW WE USE DATA:\n' +
-            '• Improve app stability and performance\n' +
-            '• Understand feature usage patterns\n' +
-            '• Fix bugs and crashes\n' +
-            '• Plan future improvements\n\n' +
-            'DATA SECURITY:\n' +
-            '• All data is transmitted securely\n' +
-            '• Data is anonymized and aggregated\n' +
-            '• We do not sell or share data with third parties\n' +
-            '• Data is retained for 90 days\n\n' +
-            'YOUR RIGHTS:\n' +
-            '• Telemetry is completely optional\n' +
-            '• You can disable it anytime in Preferences\n' +
-            '• Disabling telemetry immediately stops data collection\n\n' +
-            'For questions, contact: me@minorkeith.com',
-    buttons: ['OK']
-  });
-}
 
 // Set app icon early for share menu
 setAppIcon();
 
 app.whenReady().then(async () => {
   console.log('App is ready, creating tray and window...');
-  
-  // Initialize telemetry
-  telemetry.initialize(store);
-  
-  // Check for first launch and show telemetry opt-in
-  const hasSeenTelemetryPrompt = store.get('hasSeenTelemetryPrompt', false);
-  if (!hasSeenTelemetryPrompt) {
-    await showTelemetryOptInDialog();
-  }
-  
-  // Track app launch
-  telemetry.trackEvent('app_launched', {
-    firstLaunch: !hasSeenTelemetryPrompt
-  });
   
   // Update app launch stats
   const stats = store.get('usageStats', {});
@@ -739,10 +650,8 @@ app.on('window-all-closed', (event) => {
   event.preventDefault();
 });
 
-// Clean up telemetry on app quit
 app.on('before-quit', () => {
   // Track app quit
-  telemetry.trackEvent('app_quit');
   
   // Update total usage time
   const stats = store.get('usageStats', {});
@@ -751,8 +660,6 @@ app.on('before-quit', () => {
   stats.totalUsageTime = (stats.totalUsageTime || 0) + sessionDuration;
   store.set('usageStats', stats);
   
-  // Flush telemetry and clean up
-  telemetry.destroy();
 });
 
 app.on('activate', () => {
@@ -834,14 +741,63 @@ function validateProcessProtection(pid, processName, port) {
   return validation;
 }
 
+// Handle stop process request
+async function handleStopProcess(pid, processName, port, forceStop = false) {
+  console.log('Stop process requested:', { pid, processName, port, forceStop });
+  try {
+    // Server-side protection validation
+    const protection = validateProcessProtection(pid, processName, port);
+    
+    if (protection.protected && !forceStop) {
+      // Show confirmation for protected processes
+      const result = await dialog.showMessageBox(mainWindow, {
+        type: 'warning',
+        title: 'Protected Process',
+        message: `${processName} is a protected process`,
+        detail: protection.message + '\n\nAre you sure you want to stop it?',
+        buttons: ['Cancel', 'Stop Process'],
+        defaultId: 0,
+        cancelId: 0
+      });
+      
+      if (result.response === 0) {
+        return { success: false, error: 'User cancelled', cancelled: true };
+      }
+    }
+    
+    // Execute the stop command
+    const stopSignal = forceStop ? 'SIGKILL' : 'SIGTERM';
+    const { exec } = require('child_process');
+    
+    return new Promise((resolve) => {
+      exec(`kill -${stopSignal === 'SIGKILL' ? '9' : '15'} ${pid}`, (error, stdout, stderr) => {
+        if (error) {
+          console.error('Error stopping process:', error);
+          resolve({ 
+            success: false, 
+            error: error.message || 'Failed to stop process',
+            needsElevation: error.message?.includes('Operation not permitted')
+          });
+        } else {
+          console.log('Process stopped successfully');
+          resolve({ success: true });
+        }
+      });
+    });
+  } catch (error) {
+    console.error('Unexpected error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+ipcMain.handle('stop-process', async (event, pid, processName, port, forceStop = false) => {
+  return handleStopProcess(pid, processName, port, forceStop);
+});
+
+// Alias for compatibility
 ipcMain.handle('kill-process', async (event, pid, processName, port, forceStop = false) => {
   console.log('Kill process called with:', { pid, processName, port, forceStop });
   try {
-    // Track kill attempt
-    telemetry.trackAction('kill_process_attempt', 'port_actions', {
-      port,
-      forceStop
-    });
     // Server-side protection validation
     const protection = validateProcessProtection(pid, processName, port);
     
@@ -959,13 +915,8 @@ ipcMain.handle('kill-process', async (event, pid, processName, port, forceStop =
       const killResult = await portManager.killProcess(pid, processName);
       console.log('Kill result:', killResult);
       
-      // Track successful kill
+      // Update usage stats on successful kill
       if (killResult.success) {
-        telemetry.trackAction('kill_process_success', 'port_actions', {
-          port
-        });
-        
-        // Update usage stats
         const stats = store.get('usageStats', {});
         stats.processesKilled = (stats.processesKilled || 0) + 1;
         store.set('usageStats', stats);
@@ -983,7 +934,6 @@ ipcMain.handle('kill-process', async (event, pid, processName, port, forceStop =
 
 ipcMain.handle('get-all-ports', async (event) => {
   try {
-    telemetry.trackAction('scan_ports', 'port_actions');
     const result = await portManager.getAllPorts();
     
     // Check if it's an error response
@@ -1037,8 +987,6 @@ ipcMain.handle('get-all-ports', async (event) => {
     stats.lastUsed = Date.now();
     store.set('usageStats', stats);
     
-    // Track performance
-    telemetry.trackPerformance('port_scan_count', enrichedPorts.length, 'count');
     
     return { 
       success: true, 
@@ -1058,16 +1006,6 @@ ipcMain.handle('get-all-ports', async (event) => {
   }
 });
 
-// Track events from renderer
-ipcMain.handle('track-event', async (event, eventName, properties = {}) => {
-  try {
-    telemetry.trackEvent(eventName, properties);
-    return { success: true };
-  } catch (error) {
-    console.error('Error tracking event:', error);
-    return { success: false, error: error.message };
-  }
-});
 
 // System requirement checks
 ipcMain.handle('check-system-requirements', async () => {
@@ -1196,7 +1134,7 @@ ipcMain.handle('get-preferences', () => {
     autoRefreshEnabled: true,
     refreshInterval: 5000,
     theme: 'system',
-    showPortIcons: true,
+    showPortIcons: false,
     compactMode: false,
     confirmStop: true,
     warnProtected: true,
@@ -1206,20 +1144,11 @@ ipcMain.handle('get-preferences', () => {
     enableVirtualization: true,
     showHidden: false,
     debugMode: false,
-    telemetryEnabled: false
   });
 });
 
 ipcMain.handle('save-preferences', (event, prefs) => {
   store.set('preferences', prefs);
-  
-  // Handle telemetry preference change
-  if (prefs.telemetryEnabled !== undefined) {
-    telemetry.setEnabled(prefs.telemetryEnabled);
-    telemetry.trackAction('preferences_changed', 'settings', {
-      telemetryEnabled: prefs.telemetryEnabled
-    });
-  }
   
   // Apply preferences that need immediate action
   if (prefs.launchAtStartup !== undefined) {
@@ -1258,11 +1187,6 @@ ipcMain.handle('export-settings', async () => {
   }
   
   return { success: false, canceled: true };
-});
-
-ipcMain.handle('show-privacy-policy', () => {
-  showPrivacyPolicy();
-  return { success: true };
 });
 
 ipcMain.handle('import-settings', async () => {

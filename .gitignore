@@ -49,3 +49,23 @@ Thumbs.db
 # Heap snapshots
 *.heapsnapshot
 Heap.*.heapsnapshot
+
+# Development and build files
+.github/
+build-assets/
+*.md
+!README.md
+*.py
+*.sh
+entitlements.plist
+forge.config.js
+.claude/
+deploymenbt-mvp-plan.md
+FORCE_KILL_FEATURE.md
+UX_AUDIT.md
+SIGNING_GUIDE.md
+test-telemetry.js
+add-icon-padding.*
+
+# Environment variables
+.env*

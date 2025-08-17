@@ -1,4 +1,4 @@
-// Preferences connector - syncs UI preferences with Electron store
+// Preferences connector - syncs UI preferences with application store
 class PreferencesConnector {
   constructor() {
     this.preferences = {};

@@ -126,10 +126,4 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('importSettings').addEventListener('click', () => {
     window.electronAPI.importSettings();
   });
-  
-  // Privacy policy link
-  document.getElementById('privacyPolicy').addEventListener('click', (e) => {
-    e.preventDefault();
-    window.electronAPI.showPrivacyPolicy();
-  });
 });

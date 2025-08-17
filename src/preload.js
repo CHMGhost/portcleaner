@@ -4,7 +4,8 @@ const { contextBridge, ipcRenderer } = require('electron');
 // the ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('api', {
   getPortInfo: (port) => ipcRenderer.invoke('get-port-info', port),
-  killProcess: (pid, processName, port, forceKill = false) => ipcRenderer.invoke('kill-process', pid, processName, port, forceKill),
+  stopProcess: (pid, processName, port, forceStop = false) => ipcRenderer.invoke('stop-process', pid, processName, port, forceStop),
+  killProcess: (pid, processName, port, forceKill = false) => ipcRenderer.invoke('stop-process', pid, processName, port, forceKill), // Alias for compatibility
   getAllPorts: () => ipcRenderer.invoke('get-all-ports'),
   checkSystemRequirements: () => ipcRenderer.invoke('check-system-requirements'),
   
@@ -31,9 +32,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   savePreferences: (prefs) => ipcRenderer.invoke('save-preferences', prefs),
   resetPreferences: () => ipcRenderer.invoke('reset-preferences'),
   exportSettings: () => ipcRenderer.invoke('export-settings'),
-  importSettings: () => ipcRenderer.invoke('import-settings'),
-  showPrivacyPolicy: () => ipcRenderer.invoke('show-privacy-policy'),
-  
-  // Telemetry handler
-  trackEvent: (eventName, properties) => ipcRenderer.invoke('track-event', eventName, properties)
+  importSettings: () => ipcRenderer.invoke('import-settings')
 });

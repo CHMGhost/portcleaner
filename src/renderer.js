@@ -6,7 +6,6 @@
 
 // Initialize Web Worker for heavy operations
 let workerManager = null;
-let performanceMonitor = null;
 
 try {
   // Load WorkerManager
@@ -26,23 +25,8 @@ try {
     workerManager = null;
   };
   document.head.appendChild(workerScript);
-  
-  // Load PerformanceMonitor
-  const perfScript = document.createElement('script');
-  perfScript.src = 'utils/performanceMonitor.js';
-  perfScript.onload = () => {
-    performanceMonitor = new PerformanceMonitor();
-    console.log('Performance monitor initialized');
-    
-    // Log initial memory usage
-    const memory = performanceMonitor.measureMemory();
-    if (memory) {
-      console.log('Initial memory usage:', memory);
-    }
-  };
-  document.head.appendChild(perfScript);
 } catch (error) {
-  console.warn('Worker/Performance manager not available:', error);
+  console.warn('Worker manager not available:', error);
 }
 
 // Loading splash screen management
@@ -162,8 +146,32 @@ function showContextMenu(event, row) {
   const processName = processCell.textContent.trim();
   const pid = pidCell.textContent.trim();
   
-  // Store data for menu actions
-  currentMenuData = { port, processName, pid, row };
+  // Store data for menu actions including trigger element for focus restoration
+  currentMenuData = { port, processName, pid, row, triggerElement: document.activeElement || row };
+  
+  // Add ARIA attributes to context menu
+  contextMenu.setAttribute('role', 'menu');
+  contextMenu.setAttribute('aria-label', `Actions for port ${port}`);
+  
+  // Check if process is protected and update menu accordingly
+  const isProtected = row.classList.contains('protected-process');
+  const forceStopItem = contextMenu.querySelector('[data-action="force-stop"]');
+  
+  if (isProtected && forceStopItem) {
+    // Add warning indicator for protected process
+    const menuText = forceStopItem.querySelector('.menu-text');
+    if (menuText && !menuText.innerHTML.includes('⚠️')) {
+      menuText.innerHTML = '⚠️ Force Stop Protected Process...';
+    }
+    forceStopItem.setAttribute('title', 'This is a protected system process. Force stopping may cause system instability.');
+  } else if (forceStopItem) {
+    // Reset to normal state for non-protected processes
+    const menuText = forceStopItem.querySelector('.menu-text');
+    if (menuText) {
+      menuText.innerHTML = 'Force Stop Process...';
+    }
+    forceStopItem.removeAttribute('title');
+  }
   
   // Position and show menu
   const rect = row.getBoundingClientRect();
@@ -191,17 +199,44 @@ function setupContextMenuHandlers() {
   if (!contextMenu || !currentMenuData) return;
   
   const menuItems = contextMenu.querySelectorAll('.menu-item[data-action]');
-  menuItems.forEach(item => {
+  
+  // Add tabindex and role attributes for accessibility
+  menuItems.forEach((item, index) => {
+    item.setAttribute('tabindex', '0');
+    item.setAttribute('role', 'menuitem');
+    
+    // Click handler
     item.onclick = (e) => {
       e.stopPropagation();
       const action = item.dataset.action;
       handleContextMenuAction(action);
     };
+    
+    // Keyboard handler for Enter/Space
+    item.onkeydown = (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        e.stopPropagation();
+        const action = item.dataset.action;
+        handleContextMenuAction(action);
+      }
+    };
   });
+  
+  // Setup keyboard navigation
+  setupContextMenuKeyboardNav(contextMenu, menuItems);
+  
+  // Focus first menu item
+  if (menuItems.length > 0) {
+    menuItems[0].focus();
+  }
   
   // Hide menu on click outside
   document.addEventListener('click', hideContextMenu);
   document.addEventListener('contextmenu', hideContextMenu);
+  
+  // Hide menu on Escape key
+  document.addEventListener('keydown', handleContextMenuEscape);
 }
 
 function hideContextMenu() {
@@ -211,8 +246,108 @@ function hideContextMenu() {
   contextMenu?.classList.add('hidden');
   advancedSubmenu?.classList.add('hidden');
   
+  // Remove all event listeners
   document.removeEventListener('click', hideContextMenu);
   document.removeEventListener('contextmenu', hideContextMenu);
+  document.removeEventListener('keydown', handleContextMenuEscape);
+  
+  // Restore focus to the element that triggered the menu
+  if (currentMenuData && currentMenuData.triggerElement) {
+    currentMenuData.triggerElement.focus();
+  }
+}
+
+// Setup keyboard navigation for context menu
+function setupContextMenuKeyboardNav(menu, items) {
+  if (!menu || items.length === 0) return;
+  
+  const itemsArray = Array.from(items);
+  let currentIndex = 0;
+  
+  menu.addEventListener('keydown', (e) => {
+    // Find current focused item
+    const focusedItem = document.activeElement;
+    currentIndex = itemsArray.indexOf(focusedItem);
+    if (currentIndex === -1) currentIndex = 0;
+    
+    switch(e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        currentIndex = (currentIndex + 1) % itemsArray.length;
+        itemsArray[currentIndex].focus();
+        break;
+        
+      case 'ArrowUp':
+        e.preventDefault();
+        currentIndex = (currentIndex - 1 + itemsArray.length) % itemsArray.length;
+        itemsArray[currentIndex].focus();
+        break;
+        
+      case 'ArrowRight':
+        // Handle submenu opening
+        if (itemsArray[currentIndex].classList.contains('has-submenu')) {
+          e.preventDefault();
+          const action = itemsArray[currentIndex].dataset.action;
+          if (action === 'advanced') {
+            showAdvancedSubmenu();
+            // Focus first item in submenu
+            setTimeout(() => {
+              const submenu = document.getElementById('advancedSubmenu');
+              const submenuItems = submenu.querySelectorAll('.menu-item[data-action]');
+              if (submenuItems.length > 0) {
+                submenuItems[0].focus();
+              }
+            }, 50);
+          }
+        }
+        break;
+        
+      case 'ArrowLeft':
+        // Close submenu if in submenu
+        const submenu = document.getElementById('advancedSubmenu');
+        if (submenu && !submenu.classList.contains('hidden')) {
+          e.preventDefault();
+          submenu.classList.add('hidden');
+          // Focus back on parent menu item
+          const advancedItem = menu.querySelector('[data-action="advanced"]');
+          if (advancedItem) {
+            advancedItem.focus();
+          }
+        }
+        break;
+        
+      case 'Home':
+        e.preventDefault();
+        itemsArray[0].focus();
+        break;
+        
+      case 'End':
+        e.preventDefault();
+        itemsArray[itemsArray.length - 1].focus();
+        break;
+    }
+  });
+}
+
+// Handle Escape key for context menu
+function handleContextMenuEscape(e) {
+  if (e.key === 'Escape') {
+    const contextMenu = document.getElementById('contextMenu');
+    const advancedSubmenu = document.getElementById('advancedSubmenu');
+    
+    if (advancedSubmenu && !advancedSubmenu.classList.contains('hidden')) {
+      e.preventDefault();
+      advancedSubmenu.classList.add('hidden');
+      // Focus back on advanced menu item
+      const advancedItem = contextMenu?.querySelector('[data-action="advanced"]');
+      if (advancedItem) {
+        advancedItem.focus();
+      }
+    } else if (contextMenu && !contextMenu.classList.contains('hidden')) {
+      e.preventDefault();
+      hideContextMenu();
+    }
+  }
 }
 
 function handleContextMenuAction(action) {
@@ -341,22 +476,6 @@ function inspectProcess(data) {
   const modal = document.getElementById('inspectModal');
   if (!modal) return;
   
-  // Update breadcrumb context
-  breadcrumbManager.push({
-    type: 'modal',
-    label: `Port ${data.port}`,
-    icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <circle cx="12" cy="12" r="10"></circle>
-      <path d="M12 16v-4"></path>
-      <path d="M12 8h.01"></path>
-    </svg>`
-  });
-  
-  // Update specific breadcrumb in modal
-  const breadcrumbPort = document.getElementById('inspectBreadcrumbPort');
-  if (breadcrumbPort) {
-    breadcrumbPort.innerHTML = `<span>Port ${data.port}</span>`;
-  }
   
   // Populate modal with process data
   document.getElementById('inspectProcessName').textContent = data.processName;
@@ -386,20 +505,33 @@ function inspectProcess(data) {
   
   // Show modal
   modal.classList.remove('hidden');
+  document.body.classList.add('modal-open');
   
-  // Setup close handlers
-  const closeBtn = modal.querySelector('.modal-close');
+  // Setup close handlers - remove old listeners first
   const closeModalBtn = document.getElementById('closeInspectModal');
   const copyBtn = document.getElementById('copyProcessInfo');
   
+  // Remove any existing listeners by cloning and replacing elements
+  if (closeModalBtn) {
+    const newCloseModalBtn = closeModalBtn.cloneNode(true);
+    closeModalBtn.parentNode.replaceChild(newCloseModalBtn, closeModalBtn);
+  }
+  if (copyBtn) {
+    const newCopyBtn = copyBtn.cloneNode(true);
+    copyBtn.parentNode.replaceChild(newCopyBtn, copyBtn);
+  }
+  
   const closeModal = () => {
     modal.classList.add('hidden');
-    breadcrumbManager.pop();
+    document.body.classList.remove('modal-open');
   };
   
-  closeBtn?.addEventListener('click', closeModal);
-  closeModalBtn?.addEventListener('click', closeModal);
-  copyBtn?.addEventListener('click', () => {
+  // Get the fresh elements after cloning
+  const freshCloseModalBtn = document.getElementById('closeInspectModal');
+  const freshCopyBtn = document.getElementById('copyProcessInfo');
+  
+  freshCloseModalBtn?.addEventListener('click', closeModal);
+  freshCopyBtn?.addEventListener('click', () => {
     copyProcessInfo(data);
     closeModal();
   });
@@ -435,20 +567,105 @@ function showGracefulStopCommand(data) {
   }
 }
 
-function forceKillProcess(data) {
-  console.log('Force kill requested for:', data);
-  // Show confirmation dialog
-  if (confirm(`Force kill ${data.processName} (PID: ${data.pid})?\n\nThis will immediately terminate the process.`)) {
-    console.log('User confirmed force kill');
-    window.api.killProcess(data.pid, data.processName, data.port, true).then(result => {
-      console.log('Force kill result:', result);
-      if (result.success) {
-        showToast(`Process ${data.processName} terminated`, 'success');
-        refreshPorts();
-      } else {
-        showToast(`Failed to kill process: ${result.error}`, 'error');
-      }
-    });
+function forceStopProcess(data) {
+  console.log('Force stop requested for:', data);
+  
+  // Check if user has disabled warnings
+  const confirmStop = window.preferencesConnector?.get('confirmStop') !== false;
+  
+  if (!confirmStop) {
+    // User has disabled warnings, proceed directly
+    executeForceStop(data);
+    return;
+  }
+  
+  // Show themed confirmation dialog
+  const dialog = document.getElementById('forceStopDialog');
+  if (!dialog) {
+    // Fallback to native confirm if dialog not found
+    if (confirm(`Force stop ${data.processName} (PID: ${data.pid})?\n\nThis will immediately terminate the process.`)) {
+      executeForceStop(data);
+    }
+    return;
+  }
+  
+  // Populate dialog with process info
+  document.getElementById('dialogProcessName').textContent = data.processName;
+  document.getElementById('dialogPid').textContent = data.pid;
+  document.getElementById('dialogPort').textContent = data.port;
+  
+  // Show dialog
+  dialog.classList.remove('hidden');
+  document.body.classList.add('modal-open'); // Prevent body scroll
+  
+  // Handle dialog actions
+  const cancelBtn = document.getElementById('dialogCancel');
+  const forceStopBtn = document.getElementById('dialogForceStop');
+  const copyBtn = document.getElementById('dialogCopyCommand');
+  const dontWarnCheckbox = document.getElementById('dontWarnAgain');
+  
+  // Clean up previous listeners
+  const newCancelBtn = cancelBtn.cloneNode(true);
+  const newForceStopBtn = forceStopBtn.cloneNode(true);
+  const newCopyBtn = copyBtn.cloneNode(true);
+  
+  cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+  forceStopBtn.parentNode.replaceChild(newForceStopBtn, forceStopBtn);
+  copyBtn.parentNode.replaceChild(newCopyBtn, copyBtn);
+  
+  // Add new listeners
+  newCancelBtn.addEventListener('click', () => {
+    dialog.classList.add('hidden');
+    document.body.classList.remove('modal-open'); // Re-enable body scroll
+  });
+  
+  newForceStopBtn.addEventListener('click', () => {
+    // Check if user wants to disable future warnings
+    if (dontWarnCheckbox.checked) {
+      window.electronAPI.savePreferences({ confirmStop: false });
+    }
+    
+    dialog.classList.add('hidden');
+    document.body.classList.remove('modal-open'); // Re-enable body scroll
+    executeForceStop(data);
+  });
+  
+  newCopyBtn.addEventListener('click', () => {
+    const command = getGracefulStopCommand(data.processName, data.pid);
+    navigator.clipboard.writeText(command);
+    showToast('Graceful stop command copied to clipboard', 'success');
+    dialog.classList.add('hidden');
+    document.body.classList.remove('modal-open'); // Re-enable body scroll
+  });
+}
+
+// Alias for compatibility
+const forceKillProcess = forceStopProcess;
+
+function executeForceStop(data) {
+  console.log('Executing force stop');
+  window.api.stopProcess(data.pid, data.processName, data.port, true).then(result => {
+    console.log('Force stop result:', result);
+    if (result.success) {
+      const message = `Process ${data.processName} on port ${data.port} has been stopped`;
+      showToast(message, 'success');
+      announceToScreenReader(message, 'polite');
+      refreshPorts();
+    } else {
+      const errorMessage = `Failed to stop process: ${result.error}`;
+      showToast(errorMessage, 'error');
+      announceToScreenReader(errorMessage, 'alert');
+    }
+  });
+}
+
+function getGracefulStopCommand(processName, pid) {
+  // Return platform-appropriate graceful stop command
+  const platform = navigator.platform.toLowerCase();
+  if (platform.includes('win')) {
+    return `taskkill /PID ${pid}`;
+  } else {
+    return `kill -TERM ${pid}`;
   }
 }
 
@@ -457,9 +674,39 @@ function showAdvancedSubmenu() {
   const contextMenu = document.getElementById('contextMenu');
   if (!submenu || !contextMenu) return;
   
+  // Add ARIA attributes
+  submenu.setAttribute('role', 'menu');
+  submenu.setAttribute('aria-label', 'Advanced actions');
+  
   const menuRect = contextMenu.getBoundingClientRect();
   submenu.style.left = `${menuRect.right + 5}px`;
   submenu.style.top = `${menuRect.top}px`;
+  
+  // Setup keyboard navigation for submenu
+  const submenuItems = submenu.querySelectorAll('.menu-item[data-action]');
+  submenuItems.forEach((item) => {
+    item.setAttribute('tabindex', '0');
+    item.setAttribute('role', 'menuitem');
+    
+    // Click handler
+    item.onclick = (e) => {
+      e.stopPropagation();
+      const action = item.dataset.action;
+      handleContextMenuAction(action);
+    };
+    
+    // Keyboard handler
+    item.onkeydown = (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        const action = item.dataset.action;
+        handleContextMenuAction(action);
+      }
+    };
+  });
+  
+  // Setup navigation
+  setupContextMenuKeyboardNav(submenu, submenuItems);
   
   // Adjust if submenu goes off screen
   submenu.classList.remove('hidden');
@@ -774,7 +1021,77 @@ document.addEventListener('DOMContentLoaded', () => {
   let previousPortData = new Map(); // Track previous data for update detection
   let activeFilters = JSON.parse(localStorage.getItem('activeFilters') || '[]');
   let currentFilter = localStorage.getItem(FILTER_TAB_KEY) || 'all'; // Keep for backward compatibility
-  let currentSort = { column: 'port', direction: 'asc' };
+  // Load persisted sort settings
+  const SORT_SETTINGS_KEY = 'portcleaner-sort-settings';
+  const COLUMN_WIDTHS_KEY = 'portcleaner-column-widths';
+  
+  // Column resizing functionality
+  function initColumnResizing() {
+    const resizableHeaders = document.querySelectorAll('th.resizable');
+    const savedWidths = JSON.parse(localStorage.getItem(COLUMN_WIDTHS_KEY) || '{}');
+    
+    resizableHeaders.forEach(header => {
+      const colName = header.dataset.col;
+      
+      // Apply saved width if exists
+      if (savedWidths[colName]) {
+        header.style.width = savedWidths[colName] + 'px';
+      }
+      
+      // Create resize handle
+      const resizeHandle = document.createElement('div');
+      resizeHandle.className = 'column-resize-handle';
+      resizeHandle.style.cssText = `
+        position: absolute;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        width: 5px;
+        cursor: col-resize;
+        z-index: 10;
+      `;
+      
+      header.style.position = 'relative';
+      header.appendChild(resizeHandle);
+      
+      let startX = 0;
+      let startWidth = 0;
+      let isResizing = false;
+      
+      resizeHandle.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        startX = e.pageX;
+        startWidth = header.offsetWidth;
+        document.body.style.cursor = 'col-resize';
+        e.preventDefault();
+      });
+      
+      document.addEventListener('mousemove', (e) => {
+        if (!isResizing) return;
+        
+        const width = startWidth + (e.pageX - startX);
+        if (width > 50) { // Minimum column width
+          header.style.width = width + 'px';
+        }
+      });
+      
+      document.addEventListener('mouseup', () => {
+        if (!isResizing) return;
+        
+        isResizing = false;
+        document.body.style.cursor = '';
+        
+        // Save column widths
+        const widths = {};
+        resizableHeaders.forEach(h => {
+          widths[h.dataset.col] = h.offsetWidth;
+        });
+        localStorage.setItem(COLUMN_WIDTHS_KEY, JSON.stringify(widths));
+      });
+    });
+  }
+  
+  let currentSort = JSON.parse(localStorage.getItem(SORT_SETTINGS_KEY) || '{"column": "port", "direction": "asc"}');
   let favoritePorts = JSON.parse(localStorage.getItem('favoritePorts') || '[]');
   
   // Advanced preferences state
@@ -865,7 +1182,6 @@ document.addEventListener('DOMContentLoaded', () => {
       statsEl.innerHTML = `
         <div>Time: ${now.toLocaleTimeString()}</div>
         <div>Ports: ${allPorts.length} total, ${filteredPorts.length} filtered, ${currentDisplayedPorts} displayed</div>
-        <div>Performance: ${performanceMonitor ? 'Active' : 'Inactive'}</div>
         ${memoryInfo ? `<div>Memory: ${memoryInfo.used}MB / ${memoryInfo.total}MB (${memoryInfo.limit}MB limit)</div>` : ''}
         <div>Worker: ${workerManager ? 'Active' : 'Inactive'}</div>
         <div>Max Ports: ${maxPortsToDisplay} | Load More: ${showLoadMoreButton ? 'Yes' : 'No'}</div>
@@ -891,7 +1207,34 @@ document.addEventListener('DOMContentLoaded', () => {
   const searchInput = document.getElementById('searchInput');
   const clearSearchBtn = document.getElementById('clearSearchBtn');
   const filterButtons = document.querySelectorAll('.filter-chip');
+  const clearAllFiltersBtn = document.getElementById('clearAllFilters');
   const sortableHeaders = document.querySelectorAll('.sortable');
+  
+  // Initialize column resizing
+  initColumnResizing();
+  
+  // Compact mode toggle
+  const compactModeBtn = document.getElementById('compactModeBtn');
+  
+  function toggleCompactMode() {
+    const currentCompactMode = window.preferencesConnector?.get('compactMode') || false;
+    const newCompactMode = !currentCompactMode;
+    
+    // Update preference
+    window.electronAPI.savePreferences({ compactMode: newCompactMode });
+    
+    // Update UI
+    document.body.classList.toggle('compact-mode', newCompactMode);
+    
+    // Update button state
+    if (compactModeBtn) {
+      compactModeBtn.classList.toggle('active', newCompactMode);
+    }
+    
+    showToast(newCompactMode ? 'Compact mode enabled' : 'Compact mode disabled', 'info');
+  }
+  
+  compactModeBtn?.addEventListener('click', toggleCompactMode);
   
   // Theme management will be handled by preferences connector
   // Remove localStorage theme handling - will be replaced with preferences
@@ -960,22 +1303,6 @@ document.addEventListener('DOMContentLoaded', () => {
         window.debugLogger.setEnabled(advancedPrefs.debugMode);
         window.debugLogger.log('preferences', `Debug mode: ${advancedPrefs.debugMode ? 'enabled' : 'disabled'}`);
         
-        // Track debug mode usage for telemetry
-        if (window.electronAPI?.trackEvent) {
-          window.electronAPI.trackEvent('debug_mode_toggle', {
-            enabled: advancedPrefs.debugMode
-          });
-        }
-      }
-      
-      // Track advanced preferences usage for telemetry
-      if (window.electronAPI?.trackEvent) {
-        window.electronAPI.trackEvent('advanced_preferences_loaded', {
-          maxPorts: advancedPrefs.maxPorts || 1000,
-          enableVirtualization: advancedPrefs.enableVirtualization !== false,
-          showHidden: advancedPrefs.showHidden || false,
-          debugMode: advancedPrefs.debugMode || false
-        });
       }
       
       // Log other preferences for debugging
@@ -1694,6 +2021,22 @@ document.addEventListener('DOMContentLoaded', () => {
   // Theme toggle click handler
   themeToggle?.addEventListener('click', toggleTheme);
   
+  // Preferences button handler
+  const preferencesBtn = document.getElementById('preferencesBtn');
+  preferencesBtn?.addEventListener('click', () => {
+    window.electronAPI.openPreferences();
+  });
+  
+  // History button handler
+  const historyBtn = document.getElementById('historyBtn');
+  historyBtn?.addEventListener('click', () => {
+    const panel = document.getElementById('recentlyKilledPanel');
+    if (panel) {
+      panel.classList.toggle('hidden');
+      updateHistoryPanel();
+    }
+  });
+  
   // Check single port with loading state (only if elements exist)
   if (checkBtn && portInput) {
     checkBtn.addEventListener('click', async () => {
@@ -1745,6 +2088,17 @@ document.addEventListener('DOMContentLoaded', () => {
   refreshPorts = async function(isAutoRefresh = false) {
     if (isRefreshing) return;
     isRefreshing = true;
+    
+    // Highlight refresh status as active
+    const refreshStatus = document.getElementById('refreshStatus');
+    if (refreshStatus) {
+      refreshStatus.classList.add('dynamic', 'active');
+    }
+    
+    // Announce refresh to screen readers
+    if (!isAutoRefresh) {
+      announceToScreenReader('Refreshing port list', 'polite');
+    }
     
     // Hide any existing error banner
     hideErrorBanner();
@@ -1903,6 +2257,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
       isRefreshing = false;
+      
+      // Remove active highlighting from refresh status
+      const refreshStatus = document.getElementById('refreshStatus');
+      if (refreshStatus) {
+        refreshStatus.classList.remove('active');
+        // Keep dynamic class for a short time to show completion
+        setTimeout(() => {
+          refreshStatus.classList.remove('dynamic');
+        }, 1000);
+      }
     }
   };
   
@@ -2504,7 +2868,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // PROCESS INSPECT MODAL
   // ========================================
   const inspectModal = document.getElementById('inspectModal');
-  const modalClose = inspectModal?.querySelector('.modal-close');
   const closeInspectModalBtn = document.getElementById('closeInspectModal');
   const copyProcessInfoBtn = document.getElementById('copyProcessInfo');
   
@@ -2609,22 +2972,84 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Show the modal
     inspectModal.classList.remove('hidden');
+    document.body.classList.add('modal-open'); // Prevent body scroll
+    trapFocus(inspectModal); // Enable focus trap
     hideContextMenu(); // Close context menu when opening modal
   }
   
-  // Close modal handlers
-  modalClose?.addEventListener('click', () => {
-    inspectModal.classList.add('hidden');
-  });
+  // Focus trap utilities for modals
+  let previouslyFocusedElement = null;
   
+  function trapFocus(modal) {
+    const focusableElements = modal.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    const firstFocusable = focusableElements[0];
+    const lastFocusable = focusableElements[focusableElements.length - 1];
+    
+    // Store previously focused element
+    previouslyFocusedElement = document.activeElement;
+    
+    // Focus first element
+    if (firstFocusable) {
+      firstFocusable.focus();
+    }
+    
+    // Trap focus within modal
+    const trapHandler = (e) => {
+      if (e.key === 'Tab') {
+        if (e.shiftKey) {
+          // Shift + Tab
+          if (document.activeElement === firstFocusable) {
+            e.preventDefault();
+            lastFocusable.focus();
+          }
+        } else {
+          // Tab
+          if (document.activeElement === lastFocusable) {
+            e.preventDefault();
+            firstFocusable.focus();
+          }
+        }
+      }
+      // Close on Escape
+      if (e.key === 'Escape') {
+        closeModal(modal);
+      }
+    };
+    
+    modal.addEventListener('keydown', trapHandler);
+    modal.trapHandler = trapHandler;
+  }
+  
+  function closeModal(modal) {
+    if (!modal) return;
+    
+    modal.classList.add('hidden');
+    document.body.classList.remove('modal-open'); // Re-enable body scroll
+    
+    // Remove focus trap
+    if (modal.trapHandler) {
+      modal.removeEventListener('keydown', modal.trapHandler);
+      delete modal.trapHandler;
+    }
+    
+    // Restore focus
+    if (previouslyFocusedElement) {
+      previouslyFocusedElement.focus();
+      previouslyFocusedElement = null;
+    }
+  }
+  
+  // Close modal handlers
   closeInspectModalBtn?.addEventListener('click', () => {
-    inspectModal.classList.add('hidden');
+    closeModal(inspectModal);
   });
   
   // Close modal when clicking backdrop
   inspectModal?.addEventListener('click', (event) => {
     if (event.target === inspectModal) {
-      inspectModal.classList.add('hidden');
+      closeModal(inspectModal);
     }
   });
   
@@ -2657,7 +3082,7 @@ Port Type: ${portType}`;
   // Close modal with Escape key
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && !inspectModal.classList.contains('hidden')) {
-      inspectModal.classList.add('hidden');
+      closeModal(inspectModal);
     }
   });
   
@@ -2870,22 +3295,6 @@ Port Type: ${portType}`;
       
       window.debugLogger.log('filter', `Hidden processes filtered. Remaining: ${filteredPorts.length}/${allPorts.length}`);
       
-      // Track hidden process filtering for telemetry
-      if (window.electronAPI?.trackEvent) {
-        window.electronAPI.trackEvent('hidden_processes_filtered', {
-          originalCount: allPorts.length,
-          filteredCount: filteredPorts.length,
-          hiddenCount: allPorts.length - filteredPorts.length
-        });
-      }
-    } else {
-      // Track when hidden processes are shown
-      if (window.electronAPI?.trackEvent) {
-        window.electronAPI.trackEvent('hidden_processes_shown', {
-          totalCount: allPorts.length,
-          showHiddenEnabled: true
-        });
-      }
     }
     
     // Apply search filter
@@ -3077,12 +3486,72 @@ Port Type: ${portType}`;
             }
           });
         }
+        
+        // Announce filter change to screen readers
+        const filterName = btn.textContent.trim();
+        const filterMessage = btn.classList.contains('active')
+          ? `${filterName} filter applied`
+          : `${filterName} filter removed`;
+        announceToScreenReader(filterMessage, 'polite');
       }
+      
+      // Update clear all filters button visibility
+      updateClearAllFiltersButton();
       
       localStorage.setItem('activeFilters', JSON.stringify(activeFilters));
       applyFiltersAndSort();
     });
   });
+  
+  // Function to update clear all filters button visibility
+  function updateClearAllFiltersButton() {
+    if (clearAllFiltersBtn) {
+      if (activeFilters.length > 0) {
+        clearAllFiltersBtn.classList.add('visible');
+        // Add count badge to show number of active filters
+        const existingBadge = clearAllFiltersBtn.querySelector('.filter-count-badge');
+        if (!existingBadge && activeFilters.length > 1) {
+          const badge = document.createElement('span');
+          badge.className = 'filter-count-badge';
+          badge.textContent = activeFilters.length;
+          clearAllFiltersBtn.appendChild(badge);
+        } else if (existingBadge) {
+          existingBadge.textContent = activeFilters.length;
+        }
+      } else {
+        clearAllFiltersBtn.classList.remove('visible');
+        const badge = clearAllFiltersBtn.querySelector('.filter-count-badge');
+        if (badge) badge.remove();
+      }
+    }
+  }
+  
+  // Clear all filters button handler
+  if (clearAllFiltersBtn) {
+    clearAllFiltersBtn.addEventListener('click', () => {
+      // Clear all active filters
+      activeFilters = [];
+      filterButtons.forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.filter === 'all') {
+          btn.classList.add('active');
+        }
+      });
+      
+      // Update button visibility
+      updateClearAllFiltersButton();
+      
+      // Save and apply
+      localStorage.setItem('activeFilters', JSON.stringify(activeFilters));
+      applyFiltersAndSort();
+      
+      // Announce to screen readers
+      announceToScreenReader('All filters cleared', 'polite');
+    });
+  }
+  
+  // Initialize clear all filters button state
+  updateClearAllFiltersButton();
   
   // Sorting functionality with improved indicators
   sortableHeaders.forEach(header => {
@@ -3096,6 +3565,9 @@ Port Type: ${portType}`;
         currentSort.column = column;
         currentSort.direction = 'asc';
       }
+      
+      // Persist sort settings
+      localStorage.setItem(SORT_SETTINGS_KEY, JSON.stringify(currentSort));
       
       // Update UI - remove all sort classes first
       sortableHeaders.forEach(h => {
@@ -3137,16 +3609,6 @@ Port Type: ${portType}`;
     const totalAvailable = filteredPorts.length;
     
     window.debugLogger.log('loadmore', `Loading more ports: ${currentDisplayedPorts} → ${Math.min(newLimit, totalAvailable)}`);
-    
-    // Track load more usage for telemetry
-    if (window.electronAPI?.trackEvent) {
-      window.electronAPI.trackEvent('load_more_ports', {
-        previouslyDisplayed: currentDisplayedPorts,
-        newlyDisplayed: Math.min(newLimit, totalAvailable) - currentDisplayedPorts,
-        totalAvailable: totalAvailable,
-        maxPortsLimit: currentMaxPorts
-      });
-    }
     
     // Get more ports to display
     const morePortsToDisplay = filteredPorts.slice(0, Math.min(newLimit, totalAvailable));
@@ -3277,6 +3739,7 @@ Port Type: ${portType}`;
   // VIRTUAL SCROLLING FOR PERFORMANCE
   // ========================================
   const VIRTUAL_SCROLL_THRESHOLD = 50; // Use virtual scrolling for >50 rows
+  const AUTO_VIRTUAL_THRESHOLD = 500; // Auto-enable virtualization for >500 ports regardless of preference
   const ROW_HEIGHT = 48; // Approximate height of each row in pixels
   const VISIBLE_BUFFER = 5; // Extra rows to render outside viewport
   
@@ -3370,7 +3833,6 @@ Port Type: ${portType}`;
   // Display all active ports with virtual scrolling support
   function displayAllPorts(ports, isAutoRefresh = false) {
     // Start performance timing
-    performanceMonitor?.startTimer('displayPorts');
     
     // Reset table focus when content changes
     focusedRowIndex = -1;
@@ -3413,45 +3875,29 @@ Port Type: ${portType}`;
     
     // Check with performance monitor and user preference if virtual scrolling should be used
     const enableVirtualization = window.preferencesConnector?.get('enableVirtualization') !== false; // Default to true
-    const shouldUseVirtual = enableVirtualization && 
-                            (performanceMonitor?.shouldUseVirtualScrolling(ports.length) || 
-                             ports.length > VIRTUAL_SCROLL_THRESHOLD);
+    
+    // Auto-enable virtualization for large datasets regardless of preference
+    const shouldUseVirtual = (ports.length > AUTO_VIRTUAL_THRESHOLD) || 
+                             (enableVirtualization && ports.length > VIRTUAL_SCROLL_THRESHOLD);
+    
+    if (ports.length > AUTO_VIRTUAL_THRESHOLD && !enableVirtualization) {
+      window.debugLogger.log('render', `Auto-enabling virtualization for ${ports.length} ports (threshold: ${AUTO_VIRTUAL_THRESHOLD})`);
+    }
     
     window.debugLogger.log('render', `Virtual scrolling: ${shouldUseVirtual ? 'enabled' : 'disabled'} (preference: ${enableVirtualization}, ports: ${ports.length})`);
     
-    // Track virtual scrolling usage for telemetry
-    if (window.electronAPI?.trackEvent) {
-      window.electronAPI.trackEvent('virtual_scrolling_used', {
-        enabled: shouldUseVirtual,
-        userPreference: enableVirtualization,
-        portCount: ports.length,
-        threshold: VIRTUAL_SCROLL_THRESHOLD
-      });
-    }
     
     // Use virtual scrolling for large datasets or poor performance (if enabled)
     if (shouldUseVirtual) {
-      performanceMonitor?.mark('displayPorts', 'virtualScrolling');
       initVirtualScrolling();
       visibleStartIndex = 0;
       visibleEndIndex = Math.min(ports.length, Math.ceil(600 / ROW_HEIGHT) + VISIBLE_BUFFER);
       renderVirtualRows();
     } else {
       // Regular rendering for small datasets
-      performanceMonitor?.mark('displayPorts', 'regularRendering');
       renderRegularTable(portsToDisplay, isAutoRefresh);
     }
     
-    // End performance timing
-    const metrics = performanceMonitor?.endTimer('displayPorts', {
-      rowCount: ports.length,
-      method: shouldUseVirtual ? 'virtual' : 'regular',
-      isAutoRefresh
-    });
-    
-    if (metrics && parseFloat(metrics.duration) > 50) {
-      console.warn(`Slow render detected: ${metrics.duration}ms for ${ports.length} rows`);
-    }
   }
   
   // Build HTML for port rows (extracted for reuse)
@@ -3509,33 +3955,7 @@ Port Type: ${portType}`;
       6379: 'Redis'
     };
     
-    // Extended service port mapping with icons
-    const SERVICE_ICONS = {
-      22: { name: 'SSH', icon: '🔐', color: '#ff6b6b' },
-      23: { name: 'Telnet', icon: '💻', color: '#4ecdc4' },
-      25: { name: 'SMTP', icon: '📧', color: '#45b7d1' },
-      53: { name: 'DNS', icon: '🌐', color: '#96ceb4' },
-      80: { name: 'HTTP', icon: '🌍', color: '#45b7d1' },
-      110: { name: 'POP3', icon: '📬', color: '#feca57' },
-      143: { name: 'IMAP', icon: '📫', color: '#ff9ff3' },
-      443: { name: 'HTTPS', icon: '🔒', color: '#5f27cd' },
-      993: { name: 'IMAPS', icon: '🔐', color: '#ff9ff3' },
-      995: { name: 'POP3S', icon: '🔒', color: '#feca57' },
-      1433: { name: 'SQL Server', icon: '🗄️', color: '#fd79a8' },
-      3000: { name: 'Dev Server', icon: '⚡', color: '#fdcb6e' },
-      3306: { name: 'MySQL', icon: '🐬', color: '#fd79a8' },
-      4000: { name: 'Dev Server', icon: '🚀', color: '#6c5ce7' },
-      5000: { name: 'Flask/Dev', icon: '🐍', color: '#00b894' },
-      5432: { name: 'PostgreSQL', icon: '🐘', color: '#0984e3' },
-      5984: { name: 'CouchDB', icon: '🛋️', color: '#fd79a8' },
-      6379: { name: 'Redis', icon: '💎', color: '#e17055' },
-      8000: { name: 'Web Server', icon: '🌐', color: '#74b9ff' },
-      8080: { name: 'HTTP Alt', icon: '🌏', color: '#55a3ff' },
-      8443: { name: 'HTTPS Alt', icon: '🔐', color: '#a29bfe' },
-      9000: { name: 'Web Server', icon: '🌎', color: '#fd79a8' },
-      9200: { name: 'Elasticsearch', icon: '🔍', color: '#fdcb6e' },
-      27017: { name: 'MongoDB', icon: '🍃', color: '#00b894' }
-    };
+    // SERVICE_ICONS mapping removed - port icons disabled
     
     const PROTECTED_PROCESSES = [
       'kernel_task', 'launchd', 'systemd', 'init',
@@ -3556,9 +3976,9 @@ Port Type: ${portType}`;
     
     const isFavorite = favoritePorts.includes(port.port);
     
-    // Get service info for port icons
-    const serviceInfo = SERVICE_ICONS[port.port];
-    const showPortIcons = window.preferencesConnector?.get('showPortIcons') !== false; // Default to true
+    // Port icons disabled - serviceInfo always null
+    const serviceInfo = null;
+    const showPortIcons = window.preferencesConnector?.get('showPortIcons') !== false; // Default to false
     
     // Apply highlighting with cache
     const highlightedPort = searchTerm ? highlightText(port.port.toString(), searchTerm, cache) : port.port;
@@ -3579,7 +3999,7 @@ Port Type: ${portType}`;
           </button>
           ${showPortIcons && serviceInfo ? `<span class="service-icon" style="color: ${serviceInfo.color};" title="${serviceInfo.name} Service">${serviceInfo.icon}</span>` : ''}
           <span class="port-number">${highlightedPort}</span>
-          ${isCritical ? `<span class="critical-badge" title="${CRITICAL_PORTS[port.port]} Service">
+          ${isCritical ? `<span class="critical-badge" title="Critical System Port: ${CRITICAL_PORTS[port.port]} Service (Port ${port.port})">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
               <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
             </svg>
@@ -3587,7 +4007,7 @@ Port Type: ${portType}`;
         </td>
         <td>
           <span class="process-name">${highlightedProcess}</span>
-          ${isProtected ? `<span class="protected-badge" title="Protected Process">
+          ${isProtected ? `<span class="protected-badge" title="Protected System Process: This process is essential for system operation and cannot be stopped">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
               <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
@@ -3801,7 +4221,7 @@ Port Type: ${portType}`;
         pid,
         processName,
         port,
-        killedAt: Date.now(),
+        stoppedAt: Date.now(),
         command: getRestartCommand(processName, port),
         wasForceKilled: forceKill
       };
@@ -3870,23 +4290,26 @@ Port Type: ${portType}`;
   }
   
   // ========================================
-  // KILL HISTORY MANAGEMENT
+  // STOP HISTORY MANAGEMENT
   // ========================================
-  const KILL_HISTORY_KEY = 'portcleaner-kill-history';
+  const STOP_HISTORY_KEY = 'portcleaner-stop-history';
   const MAX_HISTORY_ITEMS = 10;
-  let killHistory = JSON.parse(localStorage.getItem(KILL_HISTORY_KEY) || '[]');
+  let stopHistory = JSON.parse(localStorage.getItem(STOP_HISTORY_KEY) || '[]');
   
-  function addToKillHistory(processInfo) {
-    killHistory.unshift(processInfo);
+  function addToStopHistory(processInfo) {
+    stopHistory.unshift(processInfo);
     
     // Limit history size
-    if (killHistory.length > MAX_HISTORY_ITEMS) {
-      killHistory = killHistory.slice(0, MAX_HISTORY_ITEMS);
+    if (stopHistory.length > MAX_HISTORY_ITEMS) {
+      stopHistory = stopHistory.slice(0, MAX_HISTORY_ITEMS);
     }
     
-    localStorage.setItem(KILL_HISTORY_KEY, JSON.stringify(killHistory));
+    localStorage.setItem(STOP_HISTORY_KEY, JSON.stringify(stopHistory));
     updateHistoryPanel();
   }
+  
+  // Alias for backward compatibility
+  const addToKillHistory = addToStopHistory;
   
   function getRestartCommand(processName, port) {
     const commands = {
@@ -3961,7 +4384,7 @@ Port Type: ${portType}`;
         <h4>How to restart ${processInfo.processName}:</h4>
         <code>${command}</code>
         <button class="copy-command" data-command="${command.replace(/"/g, '&quot;')}">
-          Copy command
+          Copy restart command
         </button>
       </div>
     `, 'info', 'Restart Instructions');
@@ -3985,19 +4408,19 @@ Port Type: ${portType}`;
     
     if (!list) return;
     
-    if (killHistory.length === 0) {
-      list.innerHTML = '<div class="empty-history">No recently terminated processes</div>';
+    if (stopHistory.length === 0) {
+      list.innerHTML = '<div class="empty-history">No recently stopped processes</div>';
       return;
     }
     
-    list.innerHTML = killHistory.slice(0, 5).map(item => `
+    list.innerHTML = stopHistory.slice(0, 5).map(item => `
       <div class="history-item">
         <div class="history-info">
           <strong>${item.processName}</strong>
           <span class="history-meta">Port ${item.port} • PID ${item.pid}</span>
-          <span class="history-time">${getRelativeTime(item.killedAt)}</span>
+          <span class="history-time">${getRelativeTime(item.stoppedAt || item.killedAt)}</span>
         </div>
-        <button class="history-action" data-index="${killHistory.indexOf(item)}">
+        <button class="history-action" data-index="${stopHistory.indexOf(item)}">
           Restart hint
         </button>
       </div>
@@ -4007,15 +4430,15 @@ Port Type: ${portType}`;
     list.querySelectorAll('.history-action').forEach(btn => {
       btn.addEventListener('click', () => {
         const index = parseInt(btn.dataset.index);
-        showRestartHint(killHistory[index]);
+        showRestartHint(stopHistory[index]);
       });
     });
   }
   
   // History panel controls
   document.getElementById('clearHistoryBtn')?.addEventListener('click', () => {
-    killHistory = [];
-    localStorage.setItem(KILL_HISTORY_KEY, JSON.stringify(killHistory));
+    stopHistory = [];
+    localStorage.setItem(STOP_HISTORY_KEY, JSON.stringify(killHistory));
     updateHistoryPanel();
     showToast('History cleared', 'success');
   });
@@ -4243,6 +4666,29 @@ Port Type: ${portType}`;
       showToast('Refreshing ports...', 'info');
     }
     
+    // H key: Toggle History (when not in input)
+    if (e.key === 'h' && !e.metaKey && !e.ctrlKey && !isInputFocused) {
+      e.preventDefault();
+      const panel = document.getElementById('recentlyKilledPanel');
+      if (panel) {
+        panel.classList.toggle('hidden');
+        updateHistoryPanel();
+        showToast(panel.classList.contains('hidden') ? 'History closed' : 'History opened', 'info');
+      }
+    }
+    
+    // C key: Toggle Compact mode (when not in input)
+    if (e.key === 'c' && !e.metaKey && !e.ctrlKey && !isInputFocused) {
+      e.preventDefault();
+      toggleCompactMode();
+    }
+    
+    // Cmd/Ctrl + , : Open Preferences
+    if ((e.metaKey || e.ctrlKey) && e.key === ',') {
+      e.preventDefault();
+      window.electronAPI.openPreferences();
+    }
+    
     // Cmd/Ctrl + R: Force refresh (override browser refresh)
     if ((e.metaKey || e.ctrlKey) && e.key === 'r') {
       e.preventDefault();
@@ -4305,7 +4751,7 @@ Port Type: ${portType}`;
       } else if (contextMenu && !contextMenu.classList.contains('hidden')) {
         contextMenu.classList.add('hidden');
       } else if (inspectModal && !inspectModal.classList.contains('hidden')) {
-        inspectModal.classList.add('hidden');
+        closeModal(inspectModal);
       } else if (searchInput && searchInput.value) {
         searchInput.value = '';
         const clearBtn = document.getElementById('clearSearchBtn');
@@ -4966,7 +5412,7 @@ Port Type: ${portType}`;
       
       window.electronAPI.receive('ports-updated', (ports) => {
         if (ports && Array.isArray(ports)) {
-          displayPorts(ports);
+          displayAllPorts(ports);
         }
       });
       
@@ -5021,6 +5467,23 @@ Port Type: ${portType}`;
           updateThemeToggleIcon(prefs.theme);
         }
       });
+    }
+  }, 100);
+  
+  // Initialize the app
+  setTimeout(() => {
+    console.log('Initializing app...');
+    console.log('refreshPorts type:', typeof refreshPorts);
+    hideLoadingSplash();
+    if (typeof refreshPorts === 'function') {
+      console.log('Calling refreshPorts...');
+      refreshPorts().catch(error => {
+        console.error('refreshPorts error:', error);
+        hideLoadingSplash(); // Ensure splash is hidden even on error
+      });
+    } else {
+      console.error('refreshPorts is not a function:', refreshPorts);
+      hideLoadingSplash(); // Hide splash even if refreshPorts is not available
     }
   }, 100);
 });

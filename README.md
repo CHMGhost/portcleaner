@@ -20,14 +20,6 @@ A powerful port management utility for macOS that helps you identify and manage 
 For a signed and notarized version that launches without security warnings, visit:
 **[https://minorkeith.com/tools/portcleaner.html](https://minorkeith.com/tools/portcleaner.html)**
 
-#### Unsigned Version (Free)
-Download the latest release from the [Releases](https://github.com/CHMGhost/portcleaner/releases) page.
-
-**Note:** The free version is not code-signed. On first launch:
-1. Right-click the app and select "Open" 
-2. Click "Open" in the security dialog
-3. The app will launch and remember your preference
-
 ### Build from Source
 
 #### Prerequisites
